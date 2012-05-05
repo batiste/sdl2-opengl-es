@@ -53,6 +53,42 @@ checkGlError(int line)
     return err;
 }
 
+// Create a shader object, load the shader source, and
+// compile the shader.
+GLuint
+LoadShader(GLenum type, const char *shaderSrc)
+{
+    GLuint shader;
+    GLint compiled;
+    // Create the shader object
+    shader = glCreateShader(type);
+    if(shader == 0) {
+        printf("Shader failed\n %d\n", type);
+        return 0;
+    }
+    // Load the shader source
+    glShaderSource(shader, 1, &shaderSrc, NULL);
+        // Compile the shader
+    glCompileShader(shader);
+        // Check the compile status
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    if(!compiled)
+    {
+        GLint infoLen = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
+        if(infoLen > 1)
+        {
+            char* infoLog = malloc(sizeof(char) * infoLen);
+            glGetShaderInfoLog(shader, infoLen, NULL, infoLog);
+            printf("Error compiling shader:\n%s\n", infoLog);
+            free(infoLog);
+        }
+        glDeleteShader(shader);
+        return 0;
+    }
+    return shader;
+}
+
 
 struct textureInfos {
    char* filename;
@@ -128,6 +164,9 @@ void drawTexture(struct textureInfos * infos) {
     float imagew_2 = infos->width / 2;
     float imageh_2 = infos->height / 2;
     glBindTexture( GL_TEXTURE_2D, infos->texture );
+
+
+    /*
     glBegin( GL_QUADS );
         //Bottom-left vertex (corner)
         glTexCoord2i( 0, 0 );
@@ -144,7 +183,7 @@ void drawTexture(struct textureInfos * infos) {
         //Top-left vertex (corner)
         glTexCoord2i( 0, 1 );
         glVertex3f( -imagew_2, imageh_2, 0.f );
-    glEnd();
+    glEnd();*/
 }
 
 int
@@ -177,22 +216,79 @@ main(int argc, char *argv[])
     /* Create our opengl context and attach it to our window */
     maincontext = SDL_GL_CreateContext(mainwindow);
     checkSDLError(__LINE__);
+
     if (!maincontext) {
         fprintf(stderr, "SDL_GL_CreateContext(): %s\n", SDL_GetError());
         return cleanup(0);
     }
 
-    checkSDLError(__LINE__);
+    /* create the shaders */
+    char vShaderStr[] =
+          "attribute vec4 vPosition;   \n"
+          "void main()                 \n"
+          "{                           \n"
+          "   gl_Position = vPosition; \n"
+          "};                          \n";
+
+
+    char fShaderStr[] =
+          "precision mediump float;                  \n"
+          "void main()                               \n"
+          "{                                         \n"
+          " gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); \n"
+          "}                                         \n";
+
+    GLuint vertexShader;
+    GLuint fragmentShader;
+    GLuint programObject;
+    GLint linked;
+    // Load the vertex/fragment shaders
+    vertexShader = LoadShader(GL_VERTEX_SHADER, vShaderStr);
+    fragmentShader = LoadShader(GL_FRAGMENT_SHADER, fShaderStr);
+    programObject = glCreateProgram();
+    if(programObject == 0) {
+        printf("Unable to initialize the shader programm");
+        return cleanup(0);
+    }
+
+    if(programObject == 0)
+        return 0;
+    glAttachShader(programObject, vertexShader);
+    glAttachShader(programObject, fragmentShader);
+    // Bind vPosition to attribute 0
+    glBindAttribLocation(programObject, 0, "vPosition");
+    // Link the program
+    glLinkProgram(programObject);
+    // Check the link status
+    glGetProgramiv(programObject, GL_LINK_STATUS, &linked);
+    if(!linked)
+    {
+        GLint infoLen = 0;
+        glGetProgramiv(programObject, GL_INFO_LOG_LENGTH, &infoLen);
+        if(infoLen > 1)
+        {
+            char* infoLog = malloc(sizeof(char) * infoLen);
+            glGetProgramInfoLog(programObject, infoLen, NULL, infoLog);
+            printf("Error linking program:\n%s\n", infoLog);
+            free(infoLog);
+        }
+        glDeleteProgram(programObject);
+        return 0;
+    }
+
+    glViewport( 0, 0, windowWidth, windowHeight );
+    glClear( GL_COLOR_BUFFER_BIT );
+    //glMatrixMode( GL_PROJECTION );
+    //glLoadIdentity();
+    //glOrtho(0.0f, windowWidth, windowHeight, 0.0f, -1.0f, 1.0f);
+
+    checkGlError(__LINE__);
+    glUseProgram(programObject);
     checkGlError(__LINE__);
 
     /* Set rendering settings */
     glEnable( GL_TEXTURE_2D );
     glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
-    glViewport( 0, 0, windowWidth, windowHeight );
-    glClear( GL_COLOR_BUFFER_BIT );
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity();
-    glOrtho(0.0f, windowWidth, windowHeight, 0.0f, -1.0f, 1.0f);
 
     /* load texture */
     GLuint textureid;
@@ -202,6 +298,7 @@ main(int argc, char *argv[])
     glBindTexture( GL_TEXTURE_2D, texture.texture );
 
     checkGlError(__LINE__);
+    checkSDLError(__LINE__);
 
     /* Swap our back buffer to the front */
     SDL_GL_SwapWindow(mainwindow);
@@ -225,7 +322,7 @@ main(int argc, char *argv[])
 
         glClear( GL_COLOR_BUFFER_BIT );
 
-        glPushMatrix();
+        /*glPushMatrix();
             glTranslatef( windowWidth/2, windowHeight/2, 0.0f );
             glRotatef( theta, 0.0f, 0.0f, 1.0f );
             drawTexture(&texture);
@@ -233,7 +330,7 @@ main(int argc, char *argv[])
             drawTexture(&texture);
             glRotatef( theta, 0.0f, 0.0f, 1.0f );
             drawTexture(&texture);
-        glPopMatrix();
+        glPopMatrix();*/
 
         //checkGlError(__LINE__);
 
