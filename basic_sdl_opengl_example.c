@@ -124,6 +124,28 @@ loadTexture(struct textureInfos * infos) {
     return 1;
 }
 
+void drawTexture(struct textureInfos * infos) {
+    float imagew_2 = infos->width / 2;
+    float imageh_2 = infos->height / 2;
+    glBindTexture( GL_TEXTURE_2D, infos->texture );
+    glBegin( GL_QUADS );
+        //Bottom-left vertex (corner)
+        glTexCoord2i( 0, 0 );
+        glVertex3f( -imagew_2, -imageh_2, 0.0f );
+
+        //Bottom-right vertex (corner)
+        glTexCoord2i( 1, 0 );
+        glVertex3f( imagew_2, -imageh_2, 0.f );
+
+        //Top-right vertex (corner)
+        glTexCoord2i( 1, 1 );
+        glVertex3f( imagew_2, imageh_2, 0.f );
+
+        //Top-left vertex (corner)
+        glTexCoord2i( 0, 1 );
+        glVertex3f( -imagew_2, imageh_2, 0.f );
+    glEnd();
+}
 
 int
 main(int argc, char *argv[])
@@ -204,28 +226,16 @@ main(int argc, char *argv[])
         glClear( GL_COLOR_BUFFER_BIT );
 
         glPushMatrix();
-            glTranslatef( 256.0f, 256.0f, 0.0f );
+            glTranslatef( windowWidth/2, windowHeight/2, 0.0f );
             glRotatef( theta, 0.0f, 0.0f, 1.0f );
-            glBegin( GL_QUADS );
-                //Bottom-left vertex (corner)
-                glTexCoord2i( 0, 0 );
-                glVertex3f( -imagew_2, -imageh_2, 0.0f );
-
-                //Bottom-right vertex (corner)
-                glTexCoord2i( 1, 0 );
-                glVertex3f( imagew_2, -imageh_2, 0.f );
-
-                //Top-right vertex (corner)
-                glTexCoord2i( 1, 1 );
-                glVertex3f( imagew_2, imageh_2, 0.f );
-
-                //Top-left vertex (corner)
-                glTexCoord2i( 0, 1 );
-                glVertex3f( -imagew_2, imageh_2, 0.f );
-            glEnd();
+            drawTexture(&texture);
+            glRotatef( theta, 0.0f, 0.0f, 1.0f );
+            drawTexture(&texture);
+            glRotatef( theta, 0.0f, 0.0f, 1.0f );
+            drawTexture(&texture);
         glPopMatrix();
 
-        checkGlError(__LINE__);
+        //checkGlError(__LINE__);
 
         SDL_GL_SwapWindow(mainwindow);
         //SDL_Delay(0);
