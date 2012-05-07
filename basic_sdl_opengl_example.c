@@ -120,34 +120,37 @@ loadTexture(struct textureInfos * infos) {
         printf("warning: %s height is not a power of 2\n", infos->filename);
     }
 
-        // get the number of channels in the SDL surface
-        nOfColors = surface->format->BytesPerPixel;
-        if (nOfColors == 4)     // contains an alpha channel
-        {
-            if (surface->format->Rmask == 0x000000ff)
-                    texture_format = GL_RGBA;
-            else
-                    texture_format = GL_BGRA;
-        } else if (nOfColors == 3)     // no alpha channel
-        {
-            if (surface->format->Rmask == 0x000000ff)
-                    texture_format = GL_RGB;
-            else
-                    texture_format = GL_BGR;
-        } else {
-            printf("warning: the image is not truecolor..  this will probably break\n");
-            // this error should not go unhandled
-        }
+    // get the number of channels in the SDL surface
+    nOfColors = surface->format->BytesPerPixel;
+    if (nOfColors == 4)     // contains an alpha channel
+    {
+        if (surface->format->Rmask == 0x000000ff)
+                texture_format = GL_RGBA;
+        else
+                texture_format = GL_BGRA;
+    } else if (nOfColors == 3)     // no alpha channel
+    {
+        if (surface->format->Rmask == 0x000000ff)
+                texture_format = GL_RGB;
+        else
+                texture_format = GL_BGR;
+    } else {
+        printf("warning: the image is not truecolor..  this will probably break\n");
+        // this error should not go unhandled
+    }
 
     // Have OpenGL generate a texture object handle for us
     glGenTextures( 1, &infos->texture );
+
+    // Bind the texture
+    glActiveTexture(GL_TEXTURE0);
 
     // Bind the texture object
     glBindTexture( GL_TEXTURE_2D, infos->texture );
 
     // Set the texture's stretching properties
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
 
     // Edit the texture object's image data using the information SDL_Surface gives us
     glTexImage2D( GL_TEXTURE_2D, 0, nOfColors, surface->w, surface->h, 0,
@@ -164,26 +167,6 @@ void drawTexture(struct textureInfos * infos) {
     float imagew_2 = infos->width / 2;
     float imageh_2 = infos->height / 2;
     glBindTexture( GL_TEXTURE_2D, infos->texture );
-
-
-    /*
-    glBegin( GL_QUADS );
-        //Bottom-left vertex (corner)
-        glTexCoord2i( 0, 0 );
-        glVertex3f( -imagew_2, -imageh_2, 0.0f );
-
-        //Bottom-right vertex (corner)
-        glTexCoord2i( 1, 0 );
-        glVertex3f( imagew_2, -imageh_2, 0.f );
-
-        //Top-right vertex (corner)
-        glTexCoord2i( 1, 1 );
-        glVertex3f( imagew_2, imageh_2, 0.f );
-
-        //Top-left vertex (corner)
-        glTexCoord2i( 0, 1 );
-        glVertex3f( -imagew_2, imageh_2, 0.f );
-    glEnd();*/
 }
 
 int
@@ -196,12 +179,6 @@ main(int argc, char *argv[])
         printf("Unable to initialize SDL");
         return cleanup(0);
     }
-
-    /* Request opengl 2.0 context.
-     * SDL doesn't have the ability to choose which profile at this time of writing,
-     * but it should default to the core profile */
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
     /* Create our window centered at 512x512 resolution */
     mainwindow = SDL_CreateWindow("Simple rotating texture", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -223,28 +200,43 @@ main(int argc, char *argv[])
     }
 
     /* create the shaders */
-    char vShaderStr[] =
-          "attribute vec4 vPosition;   \n"
+    const char * vertexShaderStr =
+          "attribute vec4 a_position;   \n"
+          "attribute vec2 a_texCoord;   \n"
+          "varying vec2 v_texCoord;     \n"
           "void main()                 \n"
           "{                           \n"
-          "   gl_Position = vPosition; \n"
+          "  gl_Position = a_position;  \n"
+          "  v_texCoord = a_texCoord;  \n"
           "};                          \n";
 
 
-    char fShaderStr[] =
+    const char * redFragmentShader =
           "precision mediump float;                  \n"
+
           "void main()                               \n"
           "{                                         \n"
           " gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); \n"
-          "}                                         \n";
+          "}";
+
+    const char * textureFragmentShader =
+        "precision mediump float; \n"
+        "varying vec2 v_texCoord;\n"
+        "uniform sampler2D s_texture;\n"
+        "void main() \n"
+        "{\n"
+        " gl_FragColor = texture2D( s_texture, v_texCoord );\n"
+        "}\n";
 
     GLuint vertexShader;
     GLuint fragmentShader;
     GLuint programObject;
     GLint linked;
     // Load the vertex/fragment shaders
-    vertexShader = LoadShader(GL_VERTEX_SHADER, vShaderStr);
-    fragmentShader = LoadShader(GL_FRAGMENT_SHADER, fShaderStr);
+    vertexShader = LoadShader(GL_VERTEX_SHADER, vertexShaderStr);
+    checkGlError(__LINE__);
+    fragmentShader = LoadShader(GL_FRAGMENT_SHADER, textureFragmentShader);
+    checkGlError(__LINE__);
     programObject = glCreateProgram();
     if(programObject == 0) {
         printf("Unable to initialize the shader programm");
@@ -253,12 +245,16 @@ main(int argc, char *argv[])
 
     if(programObject == 0)
         return 0;
+
+    checkGlError(__LINE__);
     glAttachShader(programObject, vertexShader);
+    checkGlError(__LINE__);
     glAttachShader(programObject, fragmentShader);
-    // Bind vPosition to attribute 0
-    glBindAttribLocation(programObject, 0, "vPosition");
+    checkGlError(__LINE__);
+
     // Link the program
     glLinkProgram(programObject);
+
     // Check the link status
     glGetProgramiv(programObject, GL_LINK_STATUS, &linked);
     if(!linked)
@@ -276,21 +272,21 @@ main(int argc, char *argv[])
         return 0;
     }
 
-    glViewport( 0, 0, windowWidth, windowHeight );
-    glClear( GL_COLOR_BUFFER_BIT );
-    //glMatrixMode( GL_PROJECTION );
-    //glLoadIdentity();
-    //glOrtho(0.0f, windowWidth, windowHeight, 0.0f, -1.0f, 1.0f);
-
     checkGlError(__LINE__);
+    // You need to 'use' the program before you can get it's uniforms.
     glUseProgram(programObject);
     checkGlError(__LINE__);
 
-    /* Set rendering settings */
-    glEnable( GL_TEXTURE_2D );
-    glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+    GLuint gvPositionHandle = glGetAttribLocation(programObject, "a_position");
+    // gvNormalHandle=glGetAttribLocation(gProgram,"a_normal");
+    GLuint gvTexCoordHandle = glGetAttribLocation(programObject, "a_texCoord");
+    GLuint gvSamplerHandle = glGetUniformLocation(programObject, "s_texture");
 
-    /* load texture */
+    printf("a_position %d\n", gvPositionHandle);
+    printf("a_texCoord %d\n", gvTexCoordHandle);
+    printf("s_texture %d\n", gvSamplerHandle);
+
+    // load texture
     GLuint textureid;
     struct textureInfos texture;
     texture.filename = "SDL_logo.bmp";
@@ -300,7 +296,10 @@ main(int argc, char *argv[])
     checkGlError(__LINE__);
     checkSDLError(__LINE__);
 
-    /* Swap our back buffer to the front */
+    // setup the viewport
+    glViewport( 0, 0, windowWidth, windowHeight );
+    glClear( GL_COLOR_BUFFER_BIT );
+    // Swap our back buffer to the front
     SDL_GL_SwapWindow(mainwindow);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -311,6 +310,24 @@ main(int argc, char *argv[])
     float imagew_2 = texture.width / 2;
     float imageh_2 = texture.height / 2;
 
+    glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
+    checkGlError(__LINE__);
+    GLfloat vVertices[] = { -0.75f, 1.0f, 0.0f, // Position 0
+                                    //0.0f,1.0f,0.0f,
+                    0.0f, 0.0f, // TexCoord 0
+                    -.75f, -1.0f, 0.0f, // Position 1
+                    //0.0f,1.0f,0.0f,
+                    0.0f, 1.0f, // TexCoord 1
+                    .75f, -1.0f, 0.0f, // Position 2
+                    //0.0f,1.0f,0.0f,
+                    1.0f, 1.0f, // TexCoord 2
+                    .75f, 1.0f, 0.0f, // Position 3
+                    // 0.0f,1.0f,0.0f,
+                    1.0f, 0.0f // TexCoord 3
+                    };
+    GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
+    GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
+
     while (!done) {
         ++frames;
         theta = theta + 0.1;
@@ -320,22 +337,41 @@ main(int argc, char *argv[])
             }
         }
 
-        glClear( GL_COLOR_BUFFER_BIT );
+        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+        checkGlError(__LINE__);
 
-        /*glPushMatrix();
-            glTranslatef( windowWidth/2, windowHeight/2, 0.0f );
-            glRotatef( theta, 0.0f, 0.0f, 1.0f );
-            drawTexture(&texture);
-            glRotatef( theta, 0.0f, 0.0f, 1.0f );
-            drawTexture(&texture);
-            glRotatef( theta, 0.0f, 0.0f, 1.0f );
-            drawTexture(&texture);
-        glPopMatrix();*/
-
+        //glUseProgram(gProgram);
         //checkGlError(__LINE__);
 
+        // Load the vertex position
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
+                        vVertices);
+                        checkGlError(__LINE__);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride,
+                    vVertices+3);
+        // Load the texture coordinate
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
+                        vVertices+6);
+
+        checkGlError(__LINE__);
+
+        glEnableVertexAttribArray(gvPositionHandle);
+        //glEnableVertexAttribArray(gvNormalHandle);
+        glEnableVertexAttribArray(gvTexCoordHandle);
+
+        // Bind the texture
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture.texture);
+
+        // Set the sampler texture unit to 0
+        glUniform1i(gvSamplerHandle, 0);
+
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
+
+        checkGlError(__LINE__);
+
         SDL_GL_SwapWindow(mainwindow);
-        //SDL_Delay(0);
+        SDL_Delay(1);
     }
 
     glDeleteTextures( 1, &textureid );
