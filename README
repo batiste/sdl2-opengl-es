@@ -15,4 +15,8 @@ Installing OpenGL ES
 
     $ sudo apt-get install libgles2-mesa-dev
 
+Build the programms
+--------------------
+
+    $ make
 
