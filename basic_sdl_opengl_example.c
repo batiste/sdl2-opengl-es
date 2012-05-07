@@ -124,16 +124,18 @@ loadTexture(struct textureInfos * infos) {
     nOfColors = surface->format->BytesPerPixel;
     if (nOfColors == 4)     // contains an alpha channel
     {
+        printf("Image %s has alpha channels\n", infos->filename);
         if (surface->format->Rmask == 0x000000ff)
-                texture_format = GL_RGBA;
+            texture_format = GL_RGBA;
         else
-                texture_format = GL_BGRA;
+            texture_format = GL_BGRA;
     } else if (nOfColors == 3)     // no alpha channel
     {
+        printf("Image %s does not have alpha channels\n", infos->filename);
         if (surface->format->Rmask == 0x000000ff)
-                texture_format = GL_RGB;
+            texture_format = GL_RGB;
         else
-                texture_format = GL_BGR;
+            texture_format = GL_BGR;
     } else {
         printf("warning: the image is not truecolor..  this will probably break\n");
         // this error should not go unhandled
@@ -225,7 +227,7 @@ main(int argc, char *argv[])
         "uniform sampler2D s_texture;\n"
         "void main() \n"
         "{\n"
-        " gl_FragColor = texture2D( s_texture, v_texCoord );\n"
+        "  gl_FragColor = texture2D( s_texture, v_texCoord );\n"
         "}\n";
 
     GLuint vertexShader;
@@ -302,6 +304,9 @@ main(int argc, char *argv[])
     // Swap our back buffer to the front
     SDL_GL_SwapWindow(mainwindow);
     glClear(GL_COLOR_BUFFER_BIT);
+    // enable blending
+    glEnable (GL_BLEND);
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     SDL_Event event;
     float theta = 0;
@@ -312,16 +317,16 @@ main(int argc, char *argv[])
 
     glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
     checkGlError(__LINE__);
-    GLfloat vVertices[] = { -0.75f, 1.0f, 0.0f, // Position 0
+    GLfloat vVertices[] = { -0.75f, 0.75f, 0.0f, // Position 0
                                     //0.0f,1.0f,0.0f,
                     0.0f, 0.0f, // TexCoord 0
-                    -.75f, -1.0f, 0.0f, // Position 1
+                    -.75f, -0.75f, 0.0f, // Position 1
                     //0.0f,1.0f,0.0f,
                     0.0f, 1.0f, // TexCoord 1
-                    .75f, -1.0f, 0.0f, // Position 2
+                    .75f, -0.75f, 0.0f, // Position 2
                     //0.0f,1.0f,0.0f,
                     1.0f, 1.0f, // TexCoord 2
-                    .75f, 1.0f, 0.0f, // Position 3
+                    .75f, 0.75f, 0.0f, // Position 3
                     // 0.0f,1.0f,0.0f,
                     1.0f, 0.0f // TexCoord 3
                     };
