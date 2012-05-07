@@ -6,7 +6,13 @@ Installing SDL2.0
 
 Download it from there: http://www.libsdl.org/hg.php
 
-$ ./autogen.sh
-$ ./configure --prefix=/usr/local
-$ make
-$ sudo make install
+    $ ./configure
+    $ make
+    $ sudo make install
+
+Installing OpenGL ES
+---------------------
+
+    $ sudo apt-get install libgles2-mesa-dev
+
+
