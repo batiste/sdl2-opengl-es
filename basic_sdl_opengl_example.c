@@ -53,10 +53,44 @@ checkGlError(int line)
     return err;
 }
 
+char * loadfile(char *file)
+{
+    FILE *fp;
+    long lSize;
+    char * buffer;
+
+    fp = fopen(file , "r");
+    if( !fp ) {
+        perror(file);
+        exit(1);
+    }
+
+    fseek( fp , 0L , SEEK_END);
+    lSize = ftell( fp );
+    rewind( fp );
+
+    /* allocate memory for entire content */
+    buffer = calloc( 1, lSize+1 );
+    if( !buffer ) {
+        fclose(fp);
+        printf("memory alloc fails\n");
+        exit(1);
+    }
+    /* copy the file into the buffer */
+    if( 1!=fread( buffer , lSize, 1 , fp) ) {
+        fclose(fp);
+        free(buffer);
+        printf("entire read fails\n");
+        exit(1);
+    }
+    fclose(fp);
+    return buffer;
+}
+
 // Create a shader object, load the shader source, and
 // compile the shader.
 GLuint
-LoadShader(GLenum type, const char *shaderSrc)
+loadShader(GLenum type, char* filename)
 {
     GLuint shader;
     GLint compiled;
@@ -67,8 +101,12 @@ LoadShader(GLenum type, const char *shaderSrc)
         return 0;
     }
     // Load the shader source
-    glShaderSource(shader, 1, &shaderSrc, NULL);
-        // Compile the shader
+    char * buffer;
+    buffer = loadfile(filename);
+    glShaderSource(shader, 1, &buffer, NULL);
+    free(buffer);
+
+    // Compile the shader
     glCompileShader(shader);
         // Check the compile status
     glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
@@ -122,16 +160,16 @@ loadTexture(struct textureInfos * infos) {
 
     // get the number of channels in the SDL surface
     nOfColors = surface->format->BytesPerPixel;
-    if (nOfColors == 4)     // contains an alpha channel
+    if (nOfColors == 4) // contains an alpha channel
     {
-        printf("Image %s has alpha channels\n", infos->filename);
+        printf("Image %s has an alpha channel\n", infos->filename);
         if (surface->format->Rmask == 0x000000ff)
             texture_format = GL_RGBA;
         else
             texture_format = GL_BGRA;
     } else if (nOfColors == 3)     // no alpha channel
     {
-        printf("Image %s does not have alpha channels\n", infos->filename);
+        printf("Image %s does not have an alpha channel\n", infos->filename);
         if (surface->format->Rmask == 0x000000ff)
             texture_format = GL_RGB;
         else
@@ -201,43 +239,15 @@ main(int argc, char *argv[])
         return cleanup(0);
     }
 
-    /* create the shaders */
-    const char * vertexShaderStr =
-          "attribute vec4 a_position;   \n"
-          "attribute vec2 a_texCoord;   \n"
-          "varying vec2 v_texCoord;     \n"
-          "void main()                 \n"
-          "{                           \n"
-          "  gl_Position = a_position;  \n"
-          "  v_texCoord = a_texCoord;  \n"
-          "};                          \n";
-
-
-    const char * redFragmentShader =
-          "precision mediump float;                  \n"
-
-          "void main()                               \n"
-          "{                                         \n"
-          " gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); \n"
-          "}";
-
-    const char * textureFragmentShader =
-        "precision mediump float; \n"
-        "varying vec2 v_texCoord;\n"
-        "uniform sampler2D s_texture;\n"
-        "void main() \n"
-        "{\n"
-        "  gl_FragColor = texture2D( s_texture, v_texCoord );\n"
-        "}\n";
-
+    // create the shaders
     GLuint vertexShader;
     GLuint fragmentShader;
     GLuint programObject;
     GLint linked;
     // Load the vertex/fragment shaders
-    vertexShader = LoadShader(GL_VERTEX_SHADER, vertexShaderStr);
+    vertexShader = loadShader(GL_VERTEX_SHADER, "shaders/vertex-shader-1.vert");
     checkGlError(__LINE__);
-    fragmentShader = LoadShader(GL_FRAGMENT_SHADER, textureFragmentShader);
+    fragmentShader = loadShader(GL_FRAGMENT_SHADER, "shaders/texture-shader-1.frag");
     checkGlError(__LINE__);
     programObject = glCreateProgram();
     if(programObject == 0) {
@@ -284,9 +294,9 @@ main(int argc, char *argv[])
     GLuint gvTexCoordHandle = glGetAttribLocation(programObject, "a_texCoord");
     GLuint gvSamplerHandle = glGetUniformLocation(programObject, "s_texture");
 
-    printf("a_position %d\n", gvPositionHandle);
-    printf("a_texCoord %d\n", gvTexCoordHandle);
-    printf("s_texture %d\n", gvSamplerHandle);
+    //printf("a_position %d\n", gvPositionHandle);
+    //printf("a_texCoord %d\n", gvTexCoordHandle);
+    //printf("s_texture %d\n", gvSamplerHandle);
 
     // load texture
     GLuint textureid;
@@ -317,19 +327,20 @@ main(int argc, char *argv[])
 
     glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
     checkGlError(__LINE__);
-    GLfloat vVertices[] = { -0.75f, 0.75f, 0.0f, // Position 0
-                                    //0.0f,1.0f,0.0f,
-                    0.0f, 0.0f, // TexCoord 0
-                    -.75f, -0.75f, 0.0f, // Position 1
-                    //0.0f,1.0f,0.0f,
-                    0.0f, 1.0f, // TexCoord 1
-                    .75f, -0.75f, 0.0f, // Position 2
-                    //0.0f,1.0f,0.0f,
-                    1.0f, 1.0f, // TexCoord 2
-                    .75f, 0.75f, 0.0f, // Position 3
-                    // 0.0f,1.0f,0.0f,
-                    1.0f, 0.0f // TexCoord 3
-                    };
+    GLfloat vVertices[] = {
+        -0.75f, 0.75f, 0.0f, // Position 0
+        //0.0f,1.0f,0.0f,
+        0.0f, 0.0f, // TexCoord 0
+        -.75f, -0.75f, 0.0f, // Position 1
+        //0.0f,1.0f,0.0f,
+        0.0f, 1.0f, // TexCoord 1
+        .75f, -0.75f, 0.0f, // Position 2
+        //0.0f,1.0f,0.0f,
+        1.0f, 1.0f, // TexCoord 2
+        .75f, 0.75f, 0.0f, // Position 3
+        // 0.0f,1.0f,0.0f,
+        1.0f, 0.0f // TexCoord 3
+    };
     GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
     GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
 
@@ -344,9 +355,6 @@ main(int argc, char *argv[])
 
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
         checkGlError(__LINE__);
-
-        //glUseProgram(gProgram);
-        //checkGlError(__LINE__);
 
         // Load the vertex position
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
@@ -376,7 +384,7 @@ main(int argc, char *argv[])
         checkGlError(__LINE__);
 
         SDL_GL_SwapWindow(mainwindow);
-        SDL_Delay(1);
+        //SDL_Delay(1);
     }
 
     glDeleteTextures( 1, &textureid );
