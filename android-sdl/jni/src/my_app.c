@@ -5,6 +5,20 @@ SDL_Window * mainwindow;   /* Our window handle */
 SDL_GLContext maincontext; /* Our opengl context handle */
 Uint32 then, now, frames;  /* Used for FPS */
 
+#include <jni.h>
+#include "SDL_config.h"
+
+// Called before SDL_main() to initialize JNI bindings in SDL library
+void SDL_Android_Init(JNIEnv* env, jclass cls);
+
+// Library init
+jint JNI_OnLoad(JavaVM* vm, void* reserved)
+{
+    LOG("hello 1");
+    return JNI_VERSION_1_4;
+}
+
+
 /* cleanup before quiting */
 static int
 cleanup(int rc)
@@ -20,18 +34,40 @@ cleanup(int rc)
     if(mainwindow)
         SDL_DestroyWindow(mainwindow);
     SDL_Quit();
-    return 0;
+    exit(0);
 }
 
 
-int
-main(int argc, char *argv[])
+// Start up the SDL app
+void Java_org_libsdl_app_SDLActivity_nativeInit(JNIEnv* env, jclass cls, jobject obj)
+{
+    /* This interface could expand with ABI negotiation, calbacks, etc. */
+    SDL_Android_Init(env, cls);
+
+    /* Run the application code! */
+    int status;
+    char *argv[2];
+    argv[0] = strdup("SDL_app");
+    argv[1] = NULL;
+
+    char * buffer;
+    buffer = loadfile("vertex-shader-1.vert");
+    free(buffer);
+
+    status = SDL_main(1, argv);
+
+    /* Do not issue an exit or the whole application will terminate instead of just the SDL thread */
+    //exit(status);
+}
+
+
+int main(int argc, char** argv)
 {
     int windowWidth = 512;
-    int windowHeight = 512;
+    int windowHeight = 1024;
 
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) { /* Initialize SDL's Video subsystem */
-        LOGE("Unable to initialize SDL");
+        LOG("Unable to initialize SDL");
         return cleanup(0);
     }
 
@@ -39,7 +75,7 @@ main(int argc, char *argv[])
     mainwindow = SDL_CreateWindow("Simple rotating texture", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         windowWidth, windowHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
     if (!mainwindow) {/* Die if creation failed */
-        LOGE("Unable to create window");
+        LOG("Unable to create window");
         return cleanup(0);
     }
 
@@ -58,10 +94,10 @@ main(int argc, char *argv[])
     GLuint fragmentShader;
     GLuint programObject;
     GLint linked;
-    // Load the vertex/fragment shaders
-    vertexShader = loadShader(GL_VERTEX_SHADER, "shaders/vertex-shader-1.vert");
+
+    vertexShader = loadShader(GL_VERTEX_SHADER, "vertex-shader-1.vert");
     checkGlError(__LINE__);
-    fragmentShader = loadShader(GL_FRAGMENT_SHADER, "shaders/texture-shader-1.frag");
+    fragmentShader = loadShader(GL_FRAGMENT_SHADER, "texture-shader-1.frag");
     checkGlError(__LINE__);
     programObject = glCreateProgram();
     if(programObject == 0) {
@@ -198,7 +234,8 @@ main(int argc, char *argv[])
         checkGlError(__LINE__);
 
         SDL_GL_SwapWindow(mainwindow);
-        //SDL_Delay(1);
+        SDL_Delay(5000);
+        done = 1;
     }
 
     glDeleteTextures( 1, &textureid );
