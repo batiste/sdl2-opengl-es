@@ -221,6 +221,7 @@ loadTexture(struct textureInfos * infos) {
 
     // This surface will tell us the details of the image
     SDL_Surface * osurface;
+    SDL_Surface * surface;
     GLenum texture_format;
     GLint  nOfColors;
 
@@ -234,10 +235,21 @@ loadTexture(struct textureInfos * infos) {
         return 0;
     }
 
-    SDL_Surface * surface = osurface;
-    //SDL_CreateRGBSurface(0, osurface->w, osurface->h, 24, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
-    //SDL_BlitSurface(osurface, 0, surface, 0); // Blit onto a purely RGB Surface
-    //texture_format = GL_RGB;
+    Uint32 rmask, gmask, bmask, amask;
+    #if SDL_BYTEORDER == SDL_BIG_ENDIAN
+        rmask = 0xff000000;
+        gmask = 0x00ff0000;
+        bmask = 0x0000ff00;
+        amask = 0x000000ff;
+    #else
+        rmask = 0x000000ff;
+        gmask = 0x0000ff00;
+        bmask = 0x00ff0000;
+        amask = 0xff000000;
+    #endif
+
+    surface = SDL_CreateRGBSurface(0, osurface->w, osurface->h, 24, rmask, gmask, bmask, amask);
+    SDL_BlitSurface(osurface, 0, surface, 0); // Blit onto a purely RGB Surface
 
     // Check that the image's width is a power of 2
     if ( (surface->w & (surface->w - 1)) != 0 ) {
@@ -255,13 +267,6 @@ loadTexture(struct textureInfos * infos) {
     LOG("surface->format->BytesPerPixel %d", nOfColors);
     LOG("surface->format->Rmask %d", surface->format->Rmask);
 
-    // R: 111111110000000000000000 = 16711680
-    // G:         1111111100000000 = 65280
-    // B:                 11111111 = 255
-    if (surface->format->Rmask == 0xff000000) {
-        LOG("Image Rmask is 0xff000000");
-    }
-
     if (nOfColors == 4) // contains an alpha channel
     {
         LOG("Image %s has an alpha channel", infos->filename);
@@ -270,18 +275,18 @@ loadTexture(struct textureInfos * infos) {
             texture_format = GL_RGBA;
         } else {
             texture_format = GL_BGRA;
-            LOG("GL_BGRA unsupported");
+            LOG("GL_BGRA might be unsupported");
         }
     } else if (nOfColors == 3) // no alpha channel
     {
         LOGE("Image %s does not have an alpha channel", infos->filename);
         if (surface->format->Rmask == 0x000000ff) {
             LOG("Image format GL_RGB");
-            //texture_format = GL_RGB;
+            texture_format = GL_RGB;
         } else {
-            LOG("Image format unsupported");
+            LOG("Image format GL_BGR unsupported");
+            texture_format = GL_BGR;
         }
-        texture_format = GL_RGB;
     } else {
         LOG("The image is not truecolor.");
         // this error should not go unhandled
@@ -315,7 +320,7 @@ loadTexture(struct textureInfos * infos) {
     infos->height = surface->h;
 
     SDL_FreeSurface(surface);
-    //SDL_FreeSurface(osurface);
+    SDL_FreeSurface(osurface);
     return 1;
 }
 
