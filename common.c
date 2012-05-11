@@ -248,6 +248,15 @@ loadTexture(struct textureInfos * infos) {
         amask = 0xff000000;
     #endif
 
+    int max_size;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_size);
+    LOG("Max image size %d", max_size);
+    if(osurface->w > max_size || osurface->h > max_size) {
+        LOG("Image is too big, max size is %d", max_size);
+        exit(0);
+    }
+
+
     surface = SDL_CreateRGBSurface(0, osurface->w, osurface->h, 24, rmask, gmask, bmask, amask);
     SDL_BlitSurface(osurface, 0, surface, 0); // Blit onto a purely RGB Surface
 
