@@ -271,20 +271,20 @@ loadTexture(struct textureInfos * infos) {
     {
         LOG("Image %s has an alpha channel", infos->filename);
         if (surface->format->Rmask == 0x000000ff) {
-            LOG("GL_RGBA format");
+            LOG("Image format: GL_RGBA");
             texture_format = GL_RGBA;
         } else {
             texture_format = GL_BGRA;
-            LOG("GL_BGRA might be unsupported");
+            LOG("Image format: GL_BGRA might be unsupported");
         }
     } else if (nOfColors == 3) // no alpha channel
     {
         LOGE("Image %s does not have an alpha channel", infos->filename);
         if (surface->format->Rmask == 0x000000ff) {
-            LOG("Image format GL_RGB");
+            LOG("Image format: GL_RGB");
             texture_format = GL_RGB;
         } else {
-            LOG("Image format GL_BGR unsupported");
+            LOG("Image format: GL_BGR might be unsupported");
             texture_format = GL_BGR;
         }
     } else {

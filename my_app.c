@@ -114,7 +114,7 @@ int main(int argc, char** argv)
     // load texture
     GLuint textureid;
     struct textureInfos texture;
-    texture.filename = "SDL_logo.bmp";
+    texture.filename = "SDL_logo_64.bmp";
     loadTexture(&texture);
     glBindTexture( GL_TEXTURE_2D, texture.texture );
 
