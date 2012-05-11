@@ -5,8 +5,6 @@ SDL_Window * mainwindow;   /* Our window handle */
 SDL_GLContext maincontext; /* Our opengl context handle */
 Uint32 then, now, frames;  /* Used for FPS */
 
-#include "SDL_config.h"
-
 /* cleanup before quiting */
 static int
 cleanup(int rc)
@@ -14,7 +12,7 @@ cleanup(int rc)
     /* Print out some timing information */
     now = SDL_GetTicks();
     if (now > then) {
-        LOGE("%2.2f frames per second\n",
+        LOGE("%2.2f frames per second",
                ((double) frames * 1000) / (now - then));
     }
     if(maincontext)
@@ -29,7 +27,7 @@ cleanup(int rc)
 int main(int argc, char** argv)
 {
     int windowWidth = 512;
-    int windowHeight = 1024;
+    int windowHeight = 600;
 
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) { /* Initialize SDL's Video subsystem */
         LOG("Unable to initialize SDL");
@@ -61,9 +59,9 @@ int main(int argc, char** argv)
     GLint linked;
 
     vertexShader = loadShader(GL_VERTEX_SHADER, "vertex-shader-1.vert");
-    checkGlError(__LINE__);
+    CHECK_GL();
     fragmentShader = loadShader(GL_FRAGMENT_SHADER, "texture-shader-1.frag");
-    checkGlError(__LINE__);
+    CHECK_GL();
     programObject = glCreateProgram();
     if(programObject == 0) {
         LOGE("Unable to initialize the shader programm");
@@ -73,11 +71,11 @@ int main(int argc, char** argv)
     if(programObject == 0)
         return 0;
 
-    checkGlError(__LINE__);
+    CHECK_GL();
     glAttachShader(programObject, vertexShader);
-    checkGlError(__LINE__);
+    CHECK_GL();
     glAttachShader(programObject, fragmentShader);
-    checkGlError(__LINE__);
+    CHECK_GL();
 
     // Link the program
     glLinkProgram(programObject);
@@ -99,10 +97,10 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    checkGlError(__LINE__);
+    CHECK_GL();
     // You need to 'use' the program before you can get it's uniforms.
     glUseProgram(programObject);
-    checkGlError(__LINE__);
+    CHECK_GL();
 
     GLuint gvPositionHandle = glGetAttribLocation(programObject, "a_position");
     // gvNormalHandle=glGetAttribLocation(gProgram,"a_normal");
@@ -120,8 +118,11 @@ int main(int argc, char** argv)
     loadTexture(&texture);
     glBindTexture( GL_TEXTURE_2D, texture.texture );
 
-    checkGlError(__LINE__);
-    checkSDLError(__LINE__);
+    GLuint wtex;
+    wtex = createWhiteTexture(wtex);
+
+    CHECK_GL();
+    CHECK_SDL();
 
     // setup the viewport
     glViewport( 0, 0, windowWidth, windowHeight );
@@ -137,11 +138,9 @@ int main(int argc, char** argv)
     float theta = 0;
     int done = 0;
     then = SDL_GetTicks();
-    float imagew_2 = texture.width / 2;
-    float imageh_2 = texture.height / 2;
 
     glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
-    checkGlError(__LINE__);
+    CHECK_GL();
     GLfloat vVertices[] = {
         -0.75f, 0.75f, 0.0f, // Position 0
         //0.0f,1.0f,0.0f,
@@ -159,9 +158,6 @@ int main(int argc, char** argv)
     GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
     GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
 
-    GLuint wtex;
-    wtex = createWhiteTexture(wtex);
-
     while (!done) {
         ++frames;
         theta = theta + 0.1;
@@ -172,42 +168,49 @@ int main(int argc, char** argv)
         }
 
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-        checkGlError(__LINE__);
+        CHECK_GL();
 
         // Load the vertex position
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
                         vVertices);
-                        checkGlError(__LINE__);
+                        CHECK_GL();
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride,
                     vVertices+3);
         // Load the texture coordinate
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
                         vVertices+6);
 
-        checkGlError(__LINE__);
+        CHECK_GL();
 
         glEnableVertexAttribArray(gvPositionHandle);
         //glEnableVertexAttribArray(gvNormalHandle);
         glEnableVertexAttribArray(gvTexCoordHandle);
-
-        // Bind the texture
-        glActiveTexture(GL_TEXTURE0);
-        //glBindTexture(GL_TEXTURE_2D, texture.texture);
-        glBindTexture(GL_TEXTURE_2D, wtex);
-
-
         // Set the sampler texture unit to 0
         glUniform1i(gvSamplerHandle, 0);
 
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
+        // Bind the texture
+        glActiveTexture(GL_TEXTURE0);
+        CHECK_GL();
+        glBindTexture(GL_TEXTURE_2D, texture.texture);
+        CHECK_GL();
 
-        checkGlError(__LINE__);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
+        SDL_GL_SwapWindow(mainwindow);
+        SDL_Delay(2000);
+
+        CHECK_GL();
+        glBindTexture(GL_TEXTURE_2D, wtex);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
+        CHECK_GL();
 
         SDL_GL_SwapWindow(mainwindow);
-        SDL_Delay(5000);
+        SDL_Delay(3000);
+
+
         done = 1;
     }
 
-    glDeleteTextures( 1, &textureid );
+    //glDeleteTextures( 1, &textureid );
+    glDeleteTextures( 1, &wtex );
     return cleanup(0);
 }

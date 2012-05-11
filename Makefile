@@ -6,13 +6,13 @@ CC=gcc
 
 # -lXi -lXmu
 
-all:	exemple1 exemple1mesa
+all:	glbuild eglbuild
 
-exemple1:
-	$(CC) $(CFLAGS) -o example1_gl basic_sdl_opengl_example.c $(LDFLAGS_GL) $(SDLFLAGS)
+glbuild:
+	$(CC) $(CFLAGS) -o app_gl my_app.c $(LDFLAGS_GL) $(SDLFLAGS)
 
-exemple1mesa:
-	$(CC) $(CFLAGS) -o example1_mesa basic_sdl_opengl_example.c -I/soft/X11R6.3/include -L/soft/X11R6.3/lib -lGLESv2 -lXext -lXt -lX11 -lICE -lSM -lm $(SDLFLAGS)
+eglbuild:
+	$(CC) $(CFLAGS) -o app_egl my_app.c -I/soft/X11R6.3/include -L/soft/X11R6.3/lib -lGLESv2 -lXext -lXt -lX11 -lICE -lSM -lm $(SDLFLAGS)
 
 clean:
-	rm example1_gl example1_mesa
+	rm app_egl app_gl
