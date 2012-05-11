@@ -5,6 +5,8 @@ SDL_Window * mainwindow;   /* Our window handle */
 SDL_GLContext maincontext; /* Our opengl context handle */
 Uint32 then, now, frames;  /* Used for FPS */
 
+#include "SDL_config.h"
+
 /* cleanup before quiting */
 static int
 cleanup(int rc)
@@ -20,18 +22,17 @@ cleanup(int rc)
     if(mainwindow)
         SDL_DestroyWindow(mainwindow);
     SDL_Quit();
-    return 0;
+    exit(0);
 }
 
 
-int
-main(int argc, char *argv[])
+int main(int argc, char** argv)
 {
     int windowWidth = 512;
-    int windowHeight = 512;
+    int windowHeight = 1024;
 
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) { /* Initialize SDL's Video subsystem */
-        LOGE("Unable to initialize SDL");
+        LOG("Unable to initialize SDL");
         return cleanup(0);
     }
 
@@ -39,7 +40,7 @@ main(int argc, char *argv[])
     mainwindow = SDL_CreateWindow("Simple rotating texture", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         windowWidth, windowHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
     if (!mainwindow) {/* Die if creation failed */
-        LOGE("Unable to create window");
+        LOG("Unable to create window");
         return cleanup(0);
     }
 
@@ -58,10 +59,10 @@ main(int argc, char *argv[])
     GLuint fragmentShader;
     GLuint programObject;
     GLint linked;
-    // Load the vertex/fragment shaders
-    vertexShader = loadShader(GL_VERTEX_SHADER, "shaders/vertex-shader-1.vert");
+
+    vertexShader = loadShader(GL_VERTEX_SHADER, "vertex-shader-1.vert");
     checkGlError(__LINE__);
-    fragmentShader = loadShader(GL_FRAGMENT_SHADER, "shaders/texture-shader-1.frag");
+    fragmentShader = loadShader(GL_FRAGMENT_SHADER, "texture-shader-1.frag");
     checkGlError(__LINE__);
     programObject = glCreateProgram();
     if(programObject == 0) {
@@ -158,6 +159,9 @@ main(int argc, char *argv[])
     GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
     GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
 
+    GLuint wtex;
+    wtex = createWhiteTexture(wtex);
+
     while (!done) {
         ++frames;
         theta = theta + 0.1;
@@ -188,7 +192,9 @@ main(int argc, char *argv[])
 
         // Bind the texture
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture.texture);
+        //glBindTexture(GL_TEXTURE_2D, texture.texture);
+        glBindTexture(GL_TEXTURE_2D, wtex);
+
 
         // Set the sampler texture unit to 0
         glUniform1i(gvSamplerHandle, 0);
@@ -198,7 +204,8 @@ main(int argc, char *argv[])
         checkGlError(__LINE__);
 
         SDL_GL_SwapWindow(mainwindow);
-        //SDL_Delay(1);
+        SDL_Delay(5000);
+        done = 1;
     }
 
     glDeleteTextures( 1, &textureid );

@@ -4,7 +4,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := main
 
-LOCAL_CFLAGS := -g
+LOCAL_CFLAGS := -g -DANDROID $(LOCAL_CFLAGS)
 
 SDL_PATH := ../SDL
 

@@ -5,19 +5,7 @@ SDL_Window * mainwindow;   /* Our window handle */
 SDL_GLContext maincontext; /* Our opengl context handle */
 Uint32 then, now, frames;  /* Used for FPS */
 
-#include <jni.h>
 #include "SDL_config.h"
-
-// Called before SDL_main() to initialize JNI bindings in SDL library
-void SDL_Android_Init(JNIEnv* env, jclass cls);
-
-// Library init
-jint JNI_OnLoad(JavaVM* vm, void* reserved)
-{
-    LOG("hello 1");
-    return JNI_VERSION_1_4;
-}
-
 
 /* cleanup before quiting */
 static int
@@ -35,29 +23,6 @@ cleanup(int rc)
         SDL_DestroyWindow(mainwindow);
     SDL_Quit();
     exit(0);
-}
-
-
-// Start up the SDL app
-void Java_org_libsdl_app_SDLActivity_nativeInit(JNIEnv* env, jclass cls, jobject obj)
-{
-    /* This interface could expand with ABI negotiation, calbacks, etc. */
-    SDL_Android_Init(env, cls);
-
-    /* Run the application code! */
-    int status;
-    char *argv[2];
-    argv[0] = strdup("SDL_app");
-    argv[1] = NULL;
-
-    char * buffer;
-    buffer = loadfile("vertex-shader-1.vert");
-    free(buffer);
-
-    status = SDL_main(1, argv);
-
-    /* Do not issue an exit or the whole application will terminate instead of just the SDL thread */
-    //exit(status);
 }
 
 
@@ -194,6 +159,9 @@ int main(int argc, char** argv)
     GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
     GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
 
+    GLuint wtex;
+    wtex = createWhiteTexture(wtex);
+
     while (!done) {
         ++frames;
         theta = theta + 0.1;
@@ -224,7 +192,9 @@ int main(int argc, char** argv)
 
         // Bind the texture
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture.texture);
+        //glBindTexture(GL_TEXTURE_2D, texture.texture);
+        glBindTexture(GL_TEXTURE_2D, wtex);
+
 
         // Set the sampler texture unit to 0
         glUniform1i(gvSamplerHandle, 0);
