@@ -320,8 +320,9 @@ loadTexture(struct textureInfos * infos) {
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
     CHECK_GL();
 
+    // internalformat specifies the color components in the texture. Must be same as format.
     // Edit the texture object's image data using the information SDL_Surface gives us
-    glTexImage2D( GL_TEXTURE_2D, 0, nOfColors, surface->w, surface->h, 0,
+    glTexImage2D( GL_TEXTURE_2D, 0, texture_format, surface->w, surface->h, 0,
                     texture_format, GL_UNSIGNED_BYTE, surface->pixels );
     CHECK_GL();
 
