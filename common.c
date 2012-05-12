@@ -198,9 +198,6 @@ createWhiteTexture(GLuint _textureid) {
     glBindTexture(GL_TEXTURE_2D, _textureid);
     CHECK_GL();
     GLenum format = GL_RGB;
-    // Load the texture
-    GLint nbColor = 3;
-
     //glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
     // Set the filtering mode
@@ -209,18 +206,44 @@ createWhiteTexture(GLuint _textureid) {
     CHECK_GL();
 
     // GL_RGB is necessary
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format,
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
                     GL_UNSIGNED_BYTE, pixels);
 
     CHECK_GL();
     return _textureid;
 }
 
+void convertBGRAtoRGBA(char * bgra, int num)
+{
+    LOG("convertBGRAtoRGBA");
+    int i;
+    int buffer;
+    // inverse B and R
+    for (i=0; i<(num * 4); i=i+4) {
+        buffer = bgra[i];
+        bgra[i] = bgra[i+2];
+        bgra[i+2] = buffer;
+    }
+}
+
+void convertBGRtoRGB(char * bgr, int num)
+{
+    LOG("convertBGRtoRGB");
+    int i;
+    int buffer;
+    // inverse B and R
+    for (i=0; i<(num * 3); i=i+3) {
+        buffer = bgr[i];
+        bgr[i] = bgr[i+2];
+        bgr[i+2] = buffer;
+    }
+}
+
 int
 loadTexture(struct textureInfos * infos) {
 
     // This surface will tell us the details of the image
-    SDL_Surface * osurface;
+    //SDL_Surface * osurface;
     SDL_Surface * surface;
     GLenum texture_format;
     GLint  nOfColors;
@@ -230,7 +253,7 @@ loadTexture(struct textureInfos * infos) {
     strcat( filename_final, infos->filename );
     LOG("loadTexture %s", filename_final)
 
-    if ( !(osurface = SDL_LoadBMP(filename_final)) ) {
+    if ( !(surface = SDL_LoadBMP(filename_final)) ) {
         LOG("SDL could not load %s: %s", filename_final, SDL_GetError());
         return 0;
     }
@@ -251,14 +274,13 @@ loadTexture(struct textureInfos * infos) {
     int max_size;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_size);
     LOG("Max image size %d", max_size);
-    if(osurface->w > max_size || osurface->h > max_size) {
+    if(surface->w > max_size || surface->h > max_size) {
         LOG("Image is too big, max size is %d", max_size);
         exit(0);
     }
 
-
-    surface = SDL_CreateRGBSurface(0, osurface->w, osurface->h, 24, rmask, gmask, bmask, amask);
-    SDL_BlitSurface(osurface, 0, surface, 0); // Blit onto a purely RGB Surface
+    /*surface = SDL_CreateRGBSurface(0, osurface->w, osurface->h, 24, rmask, gmask, bmask, amask);
+    SDL_BlitSurface(osurface, 0, surface, 0); // Blit onto a purely RGB Surface*/
 
     // Check that the image's width is a power of 2
     if ( (surface->w & (surface->w - 1)) != 0 ) {
@@ -273,27 +295,28 @@ loadTexture(struct textureInfos * infos) {
     // get the number of channels in the SDL surface
     // Openg ES only support GL_RGB and GL_RGBA
     nOfColors = surface->format->BytesPerPixel;
+    int nbPixels = (surface->w * surface->h);
     LOG("surface->format->BytesPerPixel %d", nOfColors);
     LOG("surface->format->Rmask %d", surface->format->Rmask);
 
     if (nOfColors == 4) // contains an alpha channel
     {
         LOG("Image %s has an alpha channel", infos->filename);
-        if (surface->format->Rmask == 0x000000ff) {
+        if (surface->format->Rmask == rmask) {
             LOG("Image format: GL_RGBA");
             texture_format = GL_RGBA;
         } else {
-            texture_format = GL_BGRA;
-            LOG("Image format: GL_BGRA might be unsupported");
+            convertBGRAtoRGBA(surface->pixels, nbPixels);
+            texture_format = GL_RGBA;
         }
     } else if (nOfColors == 3) // no alpha channel
     {
         LOGE("Image %s does not have an alpha channel", infos->filename);
-        if (surface->format->Rmask == 0x000000ff) {
+        if (surface->format->Rmask == rmask) {
             LOG("Image format: GL_RGB");
             texture_format = GL_RGB;
         } else {
-            LOG("Image format: GL_BGR might be unsupported");
+            convertBGRtoRGB(surface->pixels, nbPixels);
             texture_format = GL_BGR;
         }
     } else {
@@ -302,6 +325,7 @@ loadTexture(struct textureInfos * infos) {
     }
 
     CHECK_GL();
+    // glPixelStorei(GL_PACK_ALIGNMENT, 4);
     // Have OpenGL generate a texture object handle for us
     glGenTextures( 1, &infos->texture );
     CHECK_GL();
@@ -330,7 +354,7 @@ loadTexture(struct textureInfos * infos) {
     infos->height = surface->h;
 
     SDL_FreeSurface(surface);
-    SDL_FreeSurface(osurface);
+    //SDL_FreeSurface(osurface);
     return 1;
 }
 

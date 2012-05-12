@@ -114,7 +114,7 @@ int main(int argc, char** argv)
     // load texture
     GLuint textureid;
     struct textureInfos texture;
-    texture.filename = "SDL_logo_64.bmp";
+    texture.filename = "SDL_logo.bmp";
     loadTexture(&texture);
     glBindTexture( GL_TEXTURE_2D, texture.texture );
 
@@ -132,7 +132,8 @@ int main(int argc, char** argv)
     glClear(GL_COLOR_BUFFER_BIT);
     // enable blending
     glEnable (GL_BLEND);
-    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     SDL_Event event;
     float theta = 0;
