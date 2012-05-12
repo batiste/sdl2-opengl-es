@@ -1,46 +1,26 @@
 
 #include "common.c"
 
-SDL_Window * mainwindow;   /* Our window handle */
-SDL_GLContext maincontext; /* Our opengl context handle */
-Uint32 then, now, frames;  /* Used for FPS */
-
-/* cleanup before quiting */
-static int
-cleanup(int rc)
-{
-    /* Print out some timing information */
-    now = SDL_GetTicks();
-    if (now > then) {
-        LOGE("%2.2f frames per second",
-               ((double) frames * 1000) / (now - then));
-    }
-    if(maincontext)
-        SDL_GL_DeleteContext(maincontext);
-    if(mainwindow)
-        SDL_DestroyWindow(mainwindow);
-    SDL_Quit();
-    exit(0);
-}
-
-
 int main(int argc, char** argv)
 {
-    int windowWidth = 512;
-    int windowHeight = 600;
-
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) { /* Initialize SDL's Video subsystem */
         LOG("Unable to initialize SDL");
         return cleanup(0);
     }
 
-    /* Create our window centered at 512x512 resolution */
-    mainwindow = SDL_CreateWindow("Simple rotating texture", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        windowWidth, windowHeight, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    SDL_DisplayMode mode;
+    SDL_GetDesktopDisplayMode(0, &mode);
+    checkSDLError(__LINE__);
+    LOG("Screen size %d %d", mode.w, mode.h);
+
+    /* Create our window centered */
+    mainwindow = SDL_CreateWindow("Simple texture moving", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        mode.w, mode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
     if (!mainwindow) {/* Die if creation failed */
         LOG("Unable to create window");
         return cleanup(0);
     }
+    SDL_SetWindowFullscreen(mainwindow, SDL_TRUE);
 
     checkSDLError(__LINE__);
 
@@ -107,9 +87,7 @@ int main(int argc, char** argv)
     GLuint gvTexCoordHandle = glGetAttribLocation(programObject, "a_texCoord");
     GLuint gvSamplerHandle = glGetUniformLocation(programObject, "s_texture");
 
-    //LOGE("a_position %d\n", gvPositionHandle);
-    //LOGE("a_texCoord %d\n", gvTexCoordHandle);
-    //LOGE("s_texture %d\n", gvSamplerHandle);
+    GLuint gvMatrixHandle = glGetUniformLocation(programObject, "mvp_matrix");
 
     // load texture
     GLuint textureid;
@@ -118,29 +96,25 @@ int main(int argc, char** argv)
     loadTexture(&texture);
     glBindTexture( GL_TEXTURE_2D, texture.texture );
 
-    GLuint wtex;
-    wtex = createWhiteTexture(wtex);
-
     CHECK_GL();
     CHECK_SDL();
 
     // setup the viewport
-    glViewport( 0, 0, windowWidth, windowHeight );
-    glClear( GL_COLOR_BUFFER_BIT );
+    glViewport( 0, 0, mode.w, mode.h );
+    glClear(GL_COLOR_BUFFER_BIT);
     // Swap our back buffer to the front
     SDL_GL_SwapWindow(mainwindow);
     glClear(GL_COLOR_BUFFER_BIT);
     // enable blending
-    glEnable (GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     SDL_Event event;
     float theta = 0;
     int done = 0;
     then = SDL_GetTicks();
 
-    glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
+    glClearColor(0.1f, 0.5f, 1.0f, 0.0f);
     CHECK_GL();
     GLfloat vVertices[] = {
         -0.75f, 0.75f, 0.0f, // Position 0
@@ -158,6 +132,20 @@ int main(int argc, char** argv)
     };
     GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
     GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
+
+    float x, y;
+    float pfIdentity[] =
+    {
+        0.5f,0.0f,0.0f,0.0f,
+        0.0f,0.5f,0.0f,0.0f,
+        0.0f,0.0f,1.0f,0.0f,
+        0.0f,0.0f, 0.0f,1.0f
+    };
+    glEnableVertexAttribArray(gvPositionHandle);
+    //glEnableVertexAttribArray(gvNormalHandle);
+    glEnableVertexAttribArray(gvTexCoordHandle);
+    // Set the sampler texture unit to 0
+    glUniform1i(gvSamplerHandle, 0);
 
     while (!done) {
         ++frames;
@@ -183,35 +171,27 @@ int main(int argc, char** argv)
 
         CHECK_GL();
 
-        glEnableVertexAttribArray(gvPositionHandle);
-        //glEnableVertexAttribArray(gvNormalHandle);
-        glEnableVertexAttribArray(gvTexCoordHandle);
-        // Set the sampler texture unit to 0
-        glUniform1i(gvSamplerHandle, 0);
-
         // Bind the texture
         glActiveTexture(GL_TEXTURE0);
         CHECK_GL();
         glBindTexture(GL_TEXTURE_2D, texture.texture);
         CHECK_GL();
 
+        x = cos(frames/100.0) / 2;
+        y = sin(frames/100.0) / 2;
+        pfIdentity[12] = x;
+        pfIdentity[13] = y;
+        glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, pfIdentity);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
-        SDL_GL_SwapWindow(mainwindow);
-        SDL_Delay(2000);
 
-        CHECK_GL();
-        glBindTexture(GL_TEXTURE_2D, wtex);
+        pfIdentity[12] = y;
+        pfIdentity[13] = x;
+        glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, pfIdentity);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
-        CHECK_GL();
 
         SDL_GL_SwapWindow(mainwindow);
-        SDL_Delay(3000);
-
-
-        done = 1;
     }
 
-    //glDeleteTextures( 1, &textureid );
-    glDeleteTextures( 1, &wtex );
+    //glDeleteTextures(1, texture.texture);
     return cleanup(0);
 }

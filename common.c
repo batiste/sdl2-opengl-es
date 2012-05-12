@@ -36,6 +36,28 @@
 #include <stdlib.h>
 #include <math.h>
 
+SDL_Window * mainwindow;   /* Our window handle */
+SDL_GLContext maincontext; /* Our opengl context handle */
+Uint32 then, now, frames;  /* Used for FPS */
+
+/* cleanup before quiting */
+static int
+cleanup(int rc)
+{
+    /* Print out some timing information */
+    now = SDL_GetTicks();
+    if (now > then) {
+        LOGE("%2.2f frames per second",
+               ((double) frames * 1000) / (now - then));
+    }
+    if(maincontext)
+        SDL_GL_DeleteContext(maincontext);
+    if(mainwindow)
+        SDL_DestroyWindow(mainwindow);
+    SDL_Quit();
+    exit(rc);
+}
+
 void
 checkSDLError(int line)
 {
@@ -169,6 +191,7 @@ loadShader(GLenum type, const char * filename)
             glGetShaderInfoLog(shader, infoLen, NULL, infoLog);
             LOGE("Error compiling shader:\n %s", infoLog);
             free(infoLog);
+            exit(1);
         }
         glDeleteShader(shader);
         return 0;
@@ -215,7 +238,7 @@ createWhiteTexture(GLuint _textureid) {
 
 void convertBGRAtoRGBA(char * bgra, int num)
 {
-    LOG("convertBGRAtoRGBA");
+    LOG("convert BGRA to RGBA");
     int i;
     int buffer;
     // inverse B and R
@@ -228,7 +251,7 @@ void convertBGRAtoRGBA(char * bgra, int num)
 
 void convertBGRtoRGB(char * bgr, int num)
 {
-    LOG("convertBGRtoRGB");
+    LOG("convert BGR to RGB");
     int i;
     int buffer;
     // inverse B and R
@@ -255,7 +278,7 @@ loadTexture(struct textureInfos * infos) {
 
     if ( !(surface = SDL_LoadBMP(filename_final)) ) {
         LOG("SDL could not load %s: %s", filename_final, SDL_GetError());
-        return 0;
+        exit(0);
     }
 
     Uint32 rmask, gmask, bmask, amask;
@@ -278,9 +301,6 @@ loadTexture(struct textureInfos * infos) {
         LOG("Image is too big, max size is %d", max_size);
         exit(0);
     }
-
-    /*surface = SDL_CreateRGBSurface(0, osurface->w, osurface->h, 24, rmask, gmask, bmask, amask);
-    SDL_BlitSurface(osurface, 0, surface, 0); // Blit onto a purely RGB Surface*/
 
     // Check that the image's width is a power of 2
     if ( (surface->w & (surface->w - 1)) != 0 ) {
@@ -321,7 +341,7 @@ loadTexture(struct textureInfos * infos) {
         }
     } else {
         LOG("The image is not truecolor.");
-        // this error should not go unhandled
+        exit(0);
     }
 
     CHECK_GL();
@@ -340,13 +360,13 @@ loadTexture(struct textureInfos * infos) {
 
     // Set the texture's stretching properties
     // Those parameters are needed.
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     CHECK_GL();
 
     // internalformat specifies the color components in the texture. Must be same as format.
     // Edit the texture object's image data using the information SDL_Surface gives us
-    glTexImage2D( GL_TEXTURE_2D, 0, texture_format, surface->w, surface->h, 0,
+    glTexImage2D(GL_TEXTURE_2D, 0, texture_format, surface->w, surface->h, 0,
                     texture_format, GL_UNSIGNED_BYTE, surface->pixels );
     CHECK_GL();
 
@@ -354,8 +374,7 @@ loadTexture(struct textureInfos * infos) {
     infos->height = surface->h;
 
     SDL_FreeSurface(surface);
-    //SDL_FreeSurface(osurface);
-    return 1;
+    return 0;
 }
 
 
@@ -392,5 +411,20 @@ void Java_org_libsdl_app_SDLActivity_nativeInit(JNIEnv* env, jclass cls, jobject
     /* Do not issue an exit or the whole application will terminate instead of just the SDL thread */
     //exit(status);
 }
+
+// End the SDL app
+void Java_org_libsdl_app_SDLActivity_nativeQuit(JNIEnv* env, jclass cls, jobject obj)
+{
+    LOG("Java_org_libsdl_app_SDLActivity_nativeQuit");
+    //exit(0);
+}
+
+// End the SDL app
+void Java_org_libsdl_app_SDLActivity_onNativeKeyDown(JNIEnv* env, jclass cls, jobject obj)
+{
+    LOG("Java_org_libsdl_app_SDLActivity_onNativeKeyDown");
+    cleanup(0);
+}
+
 
 #endif

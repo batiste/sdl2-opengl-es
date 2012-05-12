@@ -1,8 +1,11 @@
 attribute vec4 a_position;
 attribute vec2 a_texCoord;
 varying vec2 v_texCoord;
+
+uniform mat4 mvp_matrix;
+
 void main()
 {
-    gl_Position = a_position;
+    gl_Position = mvp_matrix * a_position;
     v_texCoord = a_texCoord;
 }
