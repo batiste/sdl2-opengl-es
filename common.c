@@ -3,9 +3,6 @@
 #include "SDL.h"
 
 #define  LOG_TAG    "SDL"
-#define GL_BGR      0x80E0
-#define GL_BGRA     0x80E1
-
 
 #ifdef ANDROID
 #include <jni.h>
@@ -36,15 +33,15 @@
 #include <stdlib.h>
 #include <math.h>
 
-SDL_Window * mainwindow;   /* Our window handle */
-SDL_GLContext maincontext; /* Our opengl context handle */
-Uint32 then, now, frames;  /* Used for FPS */
+SDL_Window * mainwindow;   // Our window handle
+SDL_GLContext maincontext; // Our opengl context handle
+Uint32 then, now, frames;  // Used for FPS
 
-/* cleanup before quiting */
+// cleanup before quiting
 static int
 cleanup(int rc)
 {
-    /* Print out some timing information */
+    // Print out some timing information
     now = SDL_GetTicks();
     if (now > then) {
         LOGE("%2.2f frames per second",
@@ -153,11 +150,10 @@ char * loadFile(const char * filename) {
 
 
 
-// Create a shader object, load the shader source, and
-// compile the shader.
 GLuint
-loadShader(GLenum type, const char * filename)
-{
+loadShader(GLenum type, const char * filename) {
+    // Create a shader object, load the shader source, and
+    // compile the shader.
     GLuint shader;
     GLint compiled;
     // Create the shader object
@@ -208,34 +204,6 @@ struct textureInfos {
 };
 
 
-GLuint
-createWhiteTexture(GLuint _textureid) {
-    int width = 2;
-    int height = 2;
-    GLubyte pixels[4*3] = { 255,255,255, 200,0,0, 0,255,0, 0,0,255 };
-
-    // Bind the texture
-    glActiveTexture(GL_TEXTURE0);
-    CHECK_GL();
-    // Bind the texture object
-    glBindTexture(GL_TEXTURE_2D, _textureid);
-    CHECK_GL();
-    GLenum format = GL_RGB;
-    //glPixelStorei(GL_PACK_ALIGNMENT, 1);
-
-    // Set the filtering mode
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-    CHECK_GL();
-
-    // GL_RGB is necessary
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format,
-                    GL_UNSIGNED_BYTE, pixels);
-
-    CHECK_GL();
-    return _textureid;
-}
-
 void convertBGRAtoRGBA(char * bgra, int num)
 {
     LOG("convert BGRA to RGBA");
@@ -266,7 +234,6 @@ int
 loadTexture(struct textureInfos * infos) {
 
     // This surface will tell us the details of the image
-    //SDL_Surface * osurface;
     SDL_Surface * surface;
     GLenum texture_format;
     GLint  nOfColors;
@@ -337,7 +304,7 @@ loadTexture(struct textureInfos * infos) {
             texture_format = GL_RGB;
         } else {
             convertBGRtoRGB(surface->pixels, nbPixels);
-            texture_format = GL_BGR;
+            texture_format = GL_RGB;
         }
     } else {
         LOG("The image is not truecolor.");
@@ -394,10 +361,10 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 void Java_org_libsdl_app_SDLActivity_nativeInit(JNIEnv* env, jclass cls, jobject obj)
 {
     LOG("Java_org_libsdl_app_SDLActivity_nativeInit");
-    /* This interface could expand with ABI negotiation, calbacks, etc. */
+    // This interface could expand with ABI negotiation, calbacks, etc.
     SDL_Android_Init(env, cls);
 
-    /* Run the application code! */
+    // Run the application code!
     int status;
     char *argv[2];
     argv[0] = strdup("SDL_app");
@@ -408,7 +375,7 @@ void Java_org_libsdl_app_SDLActivity_nativeInit(JNIEnv* env, jclass cls, jobject
     free(buffer);
 
     status = SDL_main(1, argv);
-    /* Do not issue an exit or the whole application will terminate instead of just the SDL thread */
+    // Do not issue an exit or the whole application will terminate instead of just the SDL thread
     //exit(status);
 }
 
@@ -416,6 +383,7 @@ void Java_org_libsdl_app_SDLActivity_nativeInit(JNIEnv* env, jclass cls, jobject
 void Java_org_libsdl_app_SDLActivity_nativeQuit(JNIEnv* env, jclass cls, jobject obj)
 {
     LOG("Java_org_libsdl_app_SDLActivity_nativeQuit");
+    cleanup(0);
     //exit(0);
 }
 

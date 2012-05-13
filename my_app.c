@@ -13,10 +13,11 @@ int main(int argc, char** argv)
     checkSDLError(__LINE__);
     LOG("Screen size %d %d", mode.w, mode.h);
 
-    /* Create our window centered */
+    // Create our window centered
     mainwindow = SDL_CreateWindow("Simple texture moving", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        mode.w, mode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-    if (!mainwindow) {/* Die if creation failed */
+        mode.w -100, mode.h -100, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    if (!mainwindow) {
+        // Die if creation failed
         LOG("Unable to create window");
         return cleanup(0);
     }
@@ -24,7 +25,7 @@ int main(int argc, char** argv)
 
     checkSDLError(__LINE__);
 
-    /* Create our opengl context and attach it to our window */
+    // Create our opengl context and attach it to our window
     maincontext = SDL_GL_CreateContext(mainwindow);
     checkSDLError(__LINE__);
 

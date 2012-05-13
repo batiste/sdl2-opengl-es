@@ -99,17 +99,6 @@ public class SDLActivity extends Activity {
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        Log.e("SDL", "onBackPressed()");
-        Log.v("SDL", "onBackPressed()");
-        SDLActivity.nativeQuit();
-        this.mSDLThread.stop();
-        this.onDestroy();
-        this.finish();
-        super.onBackPressed();
-    }
-
     // Messages from the SDLMain thread
     static int COMMAND_CHANGE_TITLE = 1;
 
