@@ -37,6 +37,21 @@ SDL_Window * mainwindow;   // Our window handle
 SDL_GLContext maincontext; // Our opengl context handle
 Uint32 then, now, frames;  // Used for FPS
 
+
+#define TICK_INTERVAL    30
+
+static Uint32 next_time;
+
+Uint32 time_left(void)
+{
+    Uint32 now;
+    now = SDL_GetTicks();
+    if(next_time <= now)
+        return 0;
+    else
+        return next_time - now;
+}
+
 // cleanup before quiting
 static int
 cleanup(int rc)

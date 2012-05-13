@@ -89,6 +89,7 @@ int main(int argc, char** argv)
     GLuint gvSamplerHandle = glGetUniformLocation(programObject, "s_texture");
 
     GLuint gvMatrixHandle = glGetUniformLocation(programObject, "mvp_matrix");
+    GLuint gvRotateHandle = glGetUniformLocation(programObject, "rotate_matrix");
 
     // load texture
     GLuint textureid;
@@ -117,17 +118,20 @@ int main(int argc, char** argv)
 
     glClearColor(0.1f, 0.5f, 1.0f, 0.0f);
     CHECK_GL();
+    float image_ratio_w = texture.width / (float)mode.w;
+    float image_ratio_h = texture.height / (float)mode.h;
+
     GLfloat vVertices[] = {
-        -0.75f, 0.75f, 0.0f, // Position 0
+        -image_ratio_w, image_ratio_h, 0.0f, // Position 0
         //0.0f,1.0f,0.0f,
         0.0f, 0.0f, // TexCoord 0
-        -.75f, -0.75f, 0.0f, // Position 1
+        -image_ratio_w, -image_ratio_h, 0.0f, // Position 1
         //0.0f,1.0f,0.0f,
         0.0f, 1.0f, // TexCoord 1
-        .75f, -0.75f, 0.0f, // Position 2
+        image_ratio_w, -image_ratio_h, 0.0f, // Position 2
         //0.0f,1.0f,0.0f,
         1.0f, 1.0f, // TexCoord 2
-        .75f, 0.75f, 0.0f, // Position 3
+        image_ratio_w, image_ratio_h, 0.0f, // Position 3
         // 0.0f,1.0f,0.0f,
         1.0f, 0.0f // TexCoord 3
     };
@@ -135,18 +139,28 @@ int main(int argc, char** argv)
     GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
 
     float x, y;
-    float pfIdentity[] =
+    float screen_ratio = mode.w / (float)mode.h;
+    float mvp_matrix[] =
     {
-        0.5f,0.0f,0.0f,0.0f,
-        0.0f,0.5f,0.0f,0.0f,
+        1.0f,0.0f,0.0f,0.0f,
+        0.0f,screen_ratio,0.0f,0.0f,
         0.0f,0.0f,1.0f,0.0f,
-        0.0f,0.0f, 0.0f,1.0f
+        0.0f,0.0f,0.0f,1.0f
+    };
+    float rotate_matrix[] =
+    {
+        1.0f,0.0f,0.0f,0.0f,
+        0.0f,1.0f,0.0f,0.0f,
+        0.0f,0.0f,1.0f,0.0f,
+        0.0f,0.0f,0.0f,1.0f
     };
     glEnableVertexAttribArray(gvPositionHandle);
     //glEnableVertexAttribArray(gvNormalHandle);
     glEnableVertexAttribArray(gvTexCoordHandle);
     // Set the sampler texture unit to 0
     glUniform1i(gvSamplerHandle, 0);
+
+   next_time = SDL_GetTicks() + 16;
 
     while (!done) {
         ++frames;
@@ -180,17 +194,28 @@ int main(int argc, char** argv)
 
         x = cos(frames/100.0) / 2;
         y = sin(frames/100.0) / 2;
-        pfIdentity[12] = x;
-        pfIdentity[13] = y;
-        glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, pfIdentity);
+        mvp_matrix[12] = x;
+        mvp_matrix[13] = y;
+
+        rotate_matrix[0] = cos(frames/100.0);
+        rotate_matrix[1] = sin(frames/100.0);
+        rotate_matrix[4] = -sin(frames/100.0);
+        rotate_matrix[5] = cos(frames/100.0);
+        glUniformMatrix4fv(gvRotateHandle, 1, GL_FALSE, rotate_matrix);
+
+        glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
 
-        pfIdentity[12] = y;
-        pfIdentity[13] = x;
-        glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, pfIdentity);
+        mvp_matrix[12] = y;
+        mvp_matrix[13] = x;
+        glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
 
         SDL_GL_SwapWindow(mainwindow);
+
+        SDL_Delay(time_left());
+        next_time += 16;
+
     }
 
     //glDeleteTextures(1, texture.texture);
