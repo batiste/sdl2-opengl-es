@@ -118,20 +118,19 @@ int main(int argc, char** argv)
 
     glClearColor(0.1f, 0.5f, 1.0f, 0.0f);
     CHECK_GL();
-    float image_ratio_w = texture.width / (float)mode.w;
-    float image_ratio_h = texture.height / (float)mode.h;
+    float image_h = texture.height / (float)texture.width;
 
     GLfloat vVertices[] = {
-        -image_ratio_w, image_ratio_h, 0.0f, // Position 0
+        -1.0, image_h, 0.0f, // Position 0
         //0.0f,1.0f,0.0f,
         0.0f, 0.0f, // TexCoord 0
-        -image_ratio_w, -image_ratio_h, 0.0f, // Position 1
+        -1.0, -image_h, 0.0f, // Position 1
         //0.0f,1.0f,0.0f,
         0.0f, 1.0f, // TexCoord 1
-        image_ratio_w, -image_ratio_h, 0.0f, // Position 2
+        1.0, -image_h, 0.0f, // Position 2
         //0.0f,1.0f,0.0f,
         1.0f, 1.0f, // TexCoord 2
-        image_ratio_w, image_ratio_h, 0.0f, // Position 3
+        1.0, image_h, 0.0f, // Position 3
         // 0.0f,1.0f,0.0f,
         1.0f, 0.0f // TexCoord 3
     };
@@ -139,11 +138,11 @@ int main(int argc, char** argv)
     GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
 
     float x, y;
-    float screen_ratio = mode.w / (float)mode.h;
+    float screen_ratio = mode.h / (float)mode.w;
     float mvp_matrix[] =
     {
-        1.0f,0.0f,0.0f,0.0f,
-        0.0f,screen_ratio,0.0f,0.0f,
+        screen_ratio / 2,0.0f,0.0f,0.0f,
+        0.0f,1.0 / 2.0,0.0f,0.0f,
         0.0f,0.0f,1.0f,0.0f,
         0.0f,0.0f,0.0f,1.0f
     };
@@ -192,8 +191,8 @@ int main(int argc, char** argv)
         glBindTexture(GL_TEXTURE_2D, texture.texture);
         CHECK_GL();
 
-        x = cos(frames/100.0) / 2;
-        y = sin(frames/100.0) / 2;
+        x = cos(frames/100.0) / 4;
+        y = sin(frames/100.0) / 4;
         mvp_matrix[12] = x;
         mvp_matrix[13] = y;
 
