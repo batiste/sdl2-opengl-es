@@ -205,8 +205,8 @@ int main(int argc, char** argv)
         glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
 
-        mvp_matrix[12] = y;
-        mvp_matrix[13] = x;
+        mvp_matrix[12] = 2 * (mouse_x - (mode.w / 2.0)) / (float)mode.w;
+        mvp_matrix[13] = -2 * (mouse_y - (mode.h / 2.0)) / (float)mode.h;
         glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
 

@@ -37,6 +37,8 @@ SDL_Window * mainwindow;   // Our window handle
 SDL_GLContext maincontext; // Our opengl context handle
 Uint32 then, now, frames;  // Used for FPS
 
+float mouse_x, mouse_y;
+
 
 #define TICK_INTERVAL    30
 
@@ -408,6 +410,17 @@ void Java_org_libsdl_app_SDLActivity_onNativeKeyDown(JNIEnv* env, jclass cls, jo
     LOG("Java_org_libsdl_app_SDLActivity_onNativeKeyDown");
     cleanup(0);
 }
+
+void Java_org_libsdl_app_SDLActivity_onNativeTouch(
+                                     JNIEnv* env, jclass jcls,
+                                     jint touch_device_id_in, jint pointer_finger_id_in,
+                                     jint action, jfloat x, jfloat y, jfloat p)
+ {
+    LOG("onNativeTouch (%f, %f)", x, y);
+    mouse_x = x;
+    mouse_y = y;
+ }
+
 
 
 #endif
