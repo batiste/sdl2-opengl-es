@@ -213,6 +213,28 @@ loadShader(GLenum type, const char * filename) {
 }
 
 
+struct waveInfos {
+    SDL_AudioSpec spec;
+    Uint8   *sound;         /* Pointer to wave data */
+    Uint32   soundlen;      /* Length of wave data */
+    int      soundpos;      /* Current play position */
+};
+
+loadSound(char * filename, struct waveInfos * sound) {
+    // Load the WAV
+    char filename_final[256] = "";
+    strcpy( filename_final, ASSETS_DIR );
+    strcat( filename_final, filename );
+    LOG("loadSound %s", filename_final);
+
+    if ( SDL_LoadWAV(filename_final, &sound->spec, &sound->sound,
+        &sound->soundlen) == NULL ) {
+        LOG("Couldn't load %s: %s\n",
+                        "assets/sword2.wav", SDL_GetError());
+        exit(1);
+    }
+}
+
 struct textureInfos {
    char* filename;
    GLuint texture;

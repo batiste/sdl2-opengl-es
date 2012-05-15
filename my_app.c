@@ -1,12 +1,56 @@
 
 #include "common.c"
 
+
+struct waveInfos wave;
+
+void SDLCALL fillerup(void *unused, Uint8 *stream, int len)
+{
+    Uint8 *waveptr;
+    int    waveleft;
+
+    /* Set up the pointers */
+    waveptr = wave.sound + wave.soundpos;
+    waveleft = wave.soundlen - wave.soundpos;
+
+    /* Go! */
+    while ( waveleft <= len ) {
+        SDL_memcpy(stream, waveptr, waveleft);
+        stream += waveleft;
+        len -= waveleft;
+        waveptr = wave.sound;
+        waveleft = wave.soundlen;
+        wave.soundpos = 0;
+    }
+    SDL_memcpy(stream, waveptr, len);
+    wave.soundpos += len;
+}
+
 int main(int argc, char** argv)
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0) { /* Initialize SDL's Video subsystem */
         LOG("Unable to initialize SDL");
         return cleanup(0);
     }
+
+    loadSound("sword2.wav", &wave);
+
+    /* Initialize fillerup() variables */
+    SDL_AudioSpec wav_spec_obtained;
+    wave.spec.callback = fillerup;
+
+    if ( SDL_OpenAudio(&wave.spec, &wav_spec_obtained) < 0 ) {
+        LOG("Could not open audio: %s\n", SDL_GetError());
+        SDL_FreeWAV(wave.sound);
+        exit(1);
+    }
+    SDL_PauseAudio(0);
+
+    /* Let the audio run */
+    LOG("Using audio driver: %s\n", SDL_GetAudioDriver(32));
+    /*while ( (SDL_GetAudioStatus() == SDL_AUDIO_PLAYING) )
+        SDL_Delay(1000);*/
+
 
     SDL_DisplayMode mode;
     SDL_GetDesktopDisplayMode(0, &mode);
@@ -111,11 +155,6 @@ int main(int argc, char** argv)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    SDL_Event event;
-    float theta = 0;
-    int done = 0;
-    then = SDL_GetTicks();
-
     glClearColor(0.1f, 0.5f, 1.0f, 0.0f);
     CHECK_GL();
     float image_h = texture.height / (float)texture.width;
@@ -159,7 +198,16 @@ int main(int argc, char** argv)
     // Set the sampler texture unit to 0
     glUniform1i(gvSamplerHandle, 0);
 
-   next_time = SDL_GetTicks() + 16;
+
+    // Main loop variables
+
+    SDL_Event event;
+    float theta = 0;
+    then = SDL_GetTicks();
+    next_time = SDL_GetTicks() + 16;
+    int done = 0;
+
+    // Main loop
 
     while (!done) {
         ++frames;
@@ -217,6 +265,9 @@ int main(int argc, char** argv)
 
     }
 
+    /* Clean up */
+    SDL_CloseAudio();
+    SDL_FreeWAV(wave.sound);
     //glDeleteTextures(1, texture.texture);
     return cleanup(0);
 }
