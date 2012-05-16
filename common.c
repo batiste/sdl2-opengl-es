@@ -333,6 +333,7 @@ struct textureInfos {
    GLuint texture;
    int width;
    int height;
+   GLfloat vertices[20];
 };
 
 
@@ -472,6 +473,42 @@ loadTexture(struct textureInfos * infos) {
     infos->width = surface->w;
     infos->height = surface->h;
 
+    // Position 0
+    infos->vertices[0] = -surface->w;
+    infos->vertices[1] = surface->h;
+    infos->vertices[2] = 0.0f;
+
+    // TexCoord 0
+    infos->vertices[3] = 0.0f;
+    infos->vertices[4] = 0.0f;
+
+    // Position 1
+    infos->vertices[5] = -surface->w;
+    infos->vertices[6] = -surface->h;
+    infos->vertices[7] = 0.0f;
+
+    // TexCoord 1
+    infos->vertices[8] = 0.0f;
+    infos->vertices[9] = 1.0f;
+
+    // Position 2
+    infos->vertices[10] = surface->w;
+    infos->vertices[11] = -surface->h;
+    infos->vertices[12] = 0.0f;
+
+    // TexCoord 2
+    infos->vertices[13] = 1.0f;
+    infos->vertices[14] = 1.0f;
+
+    // Position 4
+    infos->vertices[15] = surface->w;
+    infos->vertices[16] = surface->h;
+    infos->vertices[17] = 0.0f;
+
+    // TexCoord 3
+    infos->vertices[18] = 1.0f;
+    infos->vertices[19] = 0.0f;
+
     SDL_FreeSurface(surface);
     return 0;
 }
@@ -479,31 +516,17 @@ loadTexture(struct textureInfos * infos) {
 
 int drawTexture(struct textureInfos * texture, float x, float y, float angle) {
 
-    GLfloat vVertices[] = {
-        -texture->width, texture->height, 0.0f, // Position 0
-        //0.0f,1.0f,0.0f,
-        0.0f, 0.0f, // TexCoord 0
-        -texture->width, -texture->height, 0.0f, // Position 1
-        //0.0f,1.0f,0.0f,
-        0.0f, 1.0f, // TexCoord 1
-        texture->width, -texture->height, 0.0f, // Position 2
-        //0.0f,1.0f,0.0f,
-        1.0f, 1.0f, // TexCoord 2
-        texture->width, texture->height, 0.0f, // Position 3
-        // 0.0f,1.0f,0.0f,
-        1.0f, 0.0f // TexCoord 3
-    };
     GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
     GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
 
     // Load the vertex position
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
-                    vVertices);
+        texture->vertices);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride,
-                vVertices+3);
+        texture->vertices+3);
     // Load the texture coordinate
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
-                    vVertices+6);
+        texture->vertices+6);
 
     // Bind the texture
     glActiveTexture(GL_TEXTURE0);
@@ -541,8 +564,14 @@ int init() {
     SDL_GetDesktopDisplayMode(0, &mode);
     CHECK_SDL();
 
-    screen.w = mode.w -400;
-    screen.h = mode.h -400;
+    #ifdef ANDROID
+    screen.w = mode.w;
+    screen.h = mode.h;
+    #else
+    screen.w = mode.w -100;
+    screen.h = mode.h -100;
+    #endif
+
     float zoom = 1.0f;
     mvp_matrix[0] = zoom / (float)screen.w;
     mvp_matrix[5] = zoom / (float)screen.h;
@@ -555,7 +584,9 @@ int init() {
         LOG("Unable to create window");
         return cleanup(0);
     }
-    //SDL_SetWindowFullscreen(mainwindow, SDL_TRUE);
+    #ifdef ANDROID
+    SDL_SetWindowFullscreen(mainwindow, SDL_TRUE);
+    #endif
 
     CHECK_SDL();
 
