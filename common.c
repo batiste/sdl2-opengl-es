@@ -36,13 +36,38 @@
 SDL_Window * mainwindow;   // Our window handle
 SDL_GLContext maincontext; // Our opengl context handle
 Uint32 then, now, frames;  // Used for FPS
-
 float mouse_x, mouse_y;
-
-
-#define TICK_INTERVAL    30
-
 static Uint32 next_time;
+
+GLuint gvPositionHandle;   // shader handler
+GLuint gvTexCoordHandle;
+GLuint gvSamplerHandle;
+GLuint gvMatrixHandle;
+GLuint gvRotateHandle;
+
+float mvp_matrix[] =
+{
+    1.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 1.0f
+};
+
+float rotate_matrix[] =
+{
+    1.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 1.0f
+};
+
+float ortho_matrix[] =
+{
+    1.0f, 0.0f, 0.0f, -1.0f,
+    0.0f, 1.0, 0.0f, 1.0f,
+    0.0f, 0.0f, -2.0f, -1.0f,
+    0.0f, 0.0f, 0.0f, 1.0f
+};
 
 Uint32 time_left(void)
 {
@@ -85,6 +110,7 @@ checkSDLError(int line)
     }
 }
 
+
 void
 _checkSDLError(char * file, int line)
 {
@@ -95,6 +121,7 @@ _checkSDLError(char * file, int line)
         SDL_ClearError();
     }
 }
+
 
 GLuint
 checkGlError(int line)
@@ -107,6 +134,7 @@ checkGlError(int line)
     }
     return err;
 }
+
 
 GLuint
 _checkGLError(char * file, int line)
@@ -212,6 +240,70 @@ loadShader(GLenum type, const char * filename) {
     return shader;
 }
 
+GLuint initProgram() {
+    // create the shaders and the program
+    GLuint programObject;
+    GLuint vertexShader;
+    GLuint fragmentShader;
+    GLint linked;
+
+    vertexShader = loadShader(GL_VERTEX_SHADER, "vertex-shader-1.vert");
+    CHECK_GL();
+    fragmentShader = loadShader(GL_FRAGMENT_SHADER, "texture-shader-1.frag");
+    CHECK_GL();
+    programObject = glCreateProgram();
+    if(programObject == 0) {
+        LOGE("Unable to initialize the shader programm");
+        return cleanup(0);
+    }
+
+    CHECK_GL();
+    glAttachShader(programObject, vertexShader);
+    CHECK_GL();
+    glAttachShader(programObject, fragmentShader);
+    CHECK_GL();
+
+    // Link the program
+    glLinkProgram(programObject);
+
+    // Check the link status
+    glGetProgramiv(programObject, GL_LINK_STATUS, &linked);
+    if(!linked)
+    {
+        GLint infoLen = 0;
+        glGetProgramiv(programObject, GL_INFO_LOG_LENGTH, &infoLen);
+        if(infoLen > 1)
+        {
+            char* infoLog = malloc(sizeof(char) * infoLen);
+            glGetProgramInfoLog(programObject, infoLen, NULL, infoLog);
+            LOGE("Error linking program:\n%s\n", infoLog);
+            free(infoLog);
+        }
+        glDeleteProgram(programObject);
+        return 0;
+    }
+
+    CHECK_GL();
+    // You need to 'use' the program before you can get it's uniforms.
+    glUseProgram(programObject);
+    CHECK_GL();
+
+    gvPositionHandle = glGetAttribLocation(programObject, "a_position");
+    // gvNormalHandle=glGetAttribLocation(gProgram,"a_normal");
+    gvTexCoordHandle = glGetAttribLocation(programObject, "a_texCoord");
+    gvSamplerHandle = glGetUniformLocation(programObject, "s_texture");
+
+    gvMatrixHandle = glGetUniformLocation(programObject, "mvp_matrix");
+    gvRotateHandle = glGetUniformLocation(programObject, "rotate_matrix");
+
+    glEnableVertexAttribArray(gvPositionHandle);
+    //glEnableVertexAttribArray(gvNormalHandle);
+    glEnableVertexAttribArray(gvTexCoordHandle);
+    // Set the sampler texture unit to 0
+    // glUniform1i(gvSamplerHandle, 0);
+
+    return programObject;
+}
 
 struct waveInfos {
     SDL_AudioSpec spec;
@@ -234,6 +326,7 @@ loadSound(char * filename, struct waveInfos * sound) {
         exit(1);
     }
 }
+
 
 struct textureInfos {
    char* filename;
@@ -383,6 +476,153 @@ loadTexture(struct textureInfos * infos) {
     return 0;
 }
 
+
+int drawTexture(struct textureInfos * texture, float x, float y, float angle) {
+
+    GLfloat vVertices[] = {
+        -texture->width, texture->height, 0.0f, // Position 0
+        //0.0f,1.0f,0.0f,
+        0.0f, 0.0f, // TexCoord 0
+        -texture->width, -texture->height, 0.0f, // Position 1
+        //0.0f,1.0f,0.0f,
+        0.0f, 1.0f, // TexCoord 1
+        texture->width, -texture->height, 0.0f, // Position 2
+        //0.0f,1.0f,0.0f,
+        1.0f, 1.0f, // TexCoord 2
+        texture->width, texture->height, 0.0f, // Position 3
+        // 0.0f,1.0f,0.0f,
+        1.0f, 0.0f // TexCoord 3
+    };
+    GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
+    GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
+
+    // Load the vertex position
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
+                    vVertices);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride,
+                vVertices+3);
+    // Load the texture coordinate
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
+                    vVertices+6);
+
+    // Bind the texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture->texture);
+
+    mvp_matrix[12] = x;
+    mvp_matrix[13] = y;
+
+    rotate_matrix[0] = cos(angle);
+    rotate_matrix[1] = sin(angle);
+    rotate_matrix[4] = -sin(angle);
+    rotate_matrix[5] = cos(angle);
+
+    glUniformMatrix4fv(gvRotateHandle, 1, GL_FALSE, rotate_matrix);
+    glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
+
+    CHECK_GL();
+}
+
+
+struct {
+    int w;
+    int h;
+} screen;
+
+int init() {
+    // Init the window, the GL context
+    if (SDL_Init(SDL_INIT_EVERYTHING) < 0) { /* Initialize SDL's Video subsystem */
+        LOG("Unable to initialize SDL");
+        return cleanup(0);
+    }
+    SDL_DisplayMode mode;
+    SDL_GetDesktopDisplayMode(0, &mode);
+    CHECK_SDL();
+
+    screen.w = mode.w -400;
+    screen.h = mode.h -400;
+    float zoom = 1.0f;
+    mvp_matrix[0] = zoom / (float)screen.w;
+    mvp_matrix[5] = zoom / (float)screen.h;
+
+    // Create our window centered
+    mainwindow = SDL_CreateWindow("Simple texture moving", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        screen.w, screen.h, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    if (!mainwindow) {
+        // Die if creation failed
+        LOG("Unable to create window");
+        return cleanup(0);
+    }
+    //SDL_SetWindowFullscreen(mainwindow, SDL_TRUE);
+
+    CHECK_SDL();
+
+    // Create our opengl context and attach it to our window
+    maincontext = SDL_GL_CreateContext(mainwindow);
+    CHECK_SDL();
+    if (!maincontext) {
+        LOG("Unable to create GL context");
+        return cleanup(0);
+    }
+
+    // setup the viewport
+    glViewport(0, 0, screen.w, screen.h);
+    glClear(GL_COLOR_BUFFER_BIT);
+    // Swap our back buffer to the front
+    SDL_GL_SwapWindow(mainwindow);
+    glClear(GL_COLOR_BUFFER_BIT);
+    // enable blending
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+
+struct waveInfos wave;
+
+// The function to call when the audio device needs more data
+void SDLCALL fill_audio(void *userdata, Uint8 *stream, int len)
+{
+    Uint8 *waveptr;
+    int    waveleft;
+
+    /* Set up the pointers */
+    waveptr = wave.sound + wave.soundpos;
+    waveleft = wave.soundlen - wave.soundpos;
+
+    // Finish the sound
+    while ( waveleft <= len ) {
+        SDL_memcpy(stream, waveptr, waveleft);
+        stream += waveleft;
+        len -= waveleft;
+        waveptr = wave.sound;
+        waveleft = wave.soundlen;
+        wave.soundpos = 0;
+    }
+    SDL_memcpy(stream, waveptr, len);
+    wave.soundpos += len;
+}
+
+void playSound() {
+    loadSound("sword2.wav", &wave);
+
+    /* Initialize fill_audio() variables */
+    SDL_AudioSpec wav_spec_obtained;
+    wave.spec.callback = fill_audio;
+
+    if ( SDL_OpenAudio(&wave.spec, &wav_spec_obtained) < 0 ) {
+        LOG("Could not open audio: %s\n", SDL_GetError());
+        SDL_FreeWAV(wave.sound);
+        exit(1);
+    }
+    SDL_PauseAudio(0);
+
+    /* Let the audio run */
+    LOG("Using audio driver: %s\n", SDL_GetAudioDriver(0));
+    /*while ( (SDL_GetAudioStatus() == SDL_AUDIO_PLAYING) )
+        SDL_Delay(1000);*/
+}
 
 #ifdef ANDROID
 
