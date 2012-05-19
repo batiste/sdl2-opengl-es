@@ -41,11 +41,10 @@ int main(int argc, char** argv)
         x = 0;
         y = 0;
         int i;
-        for(i=0; i<50; i++) {
-            drawTexture(&texture, -0.5 + i/50.0, y, frames / (float)(50 + i));
+        float nb_texture = 50;
+        for(i=0; i<nb_texture; i++) {
+            drawTexture(&texture, -0.5 + i/nb_texture, y, frames / (float)(50 + i));
         }
-
-
 
         x = 2 * (mouse_x - (screen.w / 2.0)) / (float)screen.w;
         y = -2 * (mouse_y - (screen.h / 2.0)) / (float)screen.h;
@@ -58,6 +57,5 @@ int main(int argc, char** argv)
     }
 
     /* Clean up */
-    //glDeleteTextures(1, texture.texture);
     return cleanup(0);
 }

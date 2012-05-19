@@ -83,6 +83,8 @@ Uint32 time_left(void)
 static int
 cleanup(int rc)
 {
+    // TODO: delete texture objects
+
     // Print out some timing information
     now = SDL_GetTicks();
     if (now > then) {
@@ -302,6 +304,9 @@ GLuint initProgram() {
     // Set the sampler texture unit to 0
     // glUniform1i(gvSamplerHandle, 0);
 
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
     return programObject;
 }
 
@@ -334,6 +339,9 @@ struct textureInfos {
    int width;
    int height;
    GLfloat vertices[20];
+   GLuint vertexBuffer;
+   GLuint indexBuffer;
+   GLushort indices[6];
 };
 
 
@@ -455,13 +463,13 @@ loadTexture(struct textureInfos * infos) {
     CHECK_GL();
 
     // Bind the texture object
-    glBindTexture( GL_TEXTURE_2D, infos->texture );
+    glBindTexture(GL_TEXTURE_2D, infos->texture);
     CHECK_GL();
 
     // Set the texture's stretching properties
     // Those parameters are needed.
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     CHECK_GL();
 
     // internalformat specifies the color components in the texture. Must be same as format.
@@ -469,9 +477,12 @@ loadTexture(struct textureInfos * infos) {
     glTexImage2D(GL_TEXTURE_2D, 0, texture_format, surface->w, surface->h, 0,
                     texture_format, GL_UNSIGNED_BYTE, surface->pixels );
     CHECK_GL();
+    //glGenerateMipmap(infos->texture);
 
     infos->width = surface->w;
     infos->height = surface->h;
+
+    CHECK_GL();
 
     // Position 0
     infos->vertices[0] = -surface->w;
@@ -509,6 +520,24 @@ loadTexture(struct textureInfos * infos) {
     infos->vertices[18] = 1.0f;
     infos->vertices[19] = 0.0f;
 
+    // buffers
+    glGenBuffers(1, &infos->vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, infos->vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, 20 * sizeof(GLfloat), infos->vertices, GL_STATIC_DRAW);
+
+
+    infos->indices[0] = 0;
+    infos->indices[1] = 1;
+    infos->indices[2] = 2;
+    infos->indices[3] = 0;
+    infos->indices[4] = 2;
+    infos->indices[5] = 3;
+
+    glGenBuffers(1, &infos->indexBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, infos->indexBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLushort), infos->indices, GL_STATIC_DRAW);
+    CHECK_GL();
+
     SDL_FreeSurface(surface);
     return 0;
 }
@@ -516,14 +545,19 @@ loadTexture(struct textureInfos * infos) {
 
 int drawTexture(struct textureInfos * texture, float x, float y, float angle) {
 
-    GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
+    // Specifies the byte offset between consecutive generic vertex attributes.
+    // If stride is 0, the generic vertex attributes are understood to be tightly packed in the array
     GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     // Load the vertex position
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
         texture->vertices);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride,
         texture->vertices+3);
+
     // Load the texture coordinate
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
         texture->vertices+6);
@@ -532,18 +566,63 @@ int drawTexture(struct textureInfos * texture, float x, float y, float angle) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture->texture);
 
+    // matrix transformations
     mvp_matrix[12] = x;
     mvp_matrix[13] = y;
 
     rotate_matrix[0] = cos(angle);
     rotate_matrix[1] = sin(angle);
-    rotate_matrix[4] = -sin(angle);
-    rotate_matrix[5] = cos(angle);
+    rotate_matrix[4] = -rotate_matrix[1];
+    rotate_matrix[5] = rotate_matrix[0];
 
     glUniformMatrix4fv(gvRotateHandle, 1, GL_FALSE, rotate_matrix);
     glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
 
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, texture->indices);
+
+    CHECK_GL();
+}
+
+int drawBufferTexture(struct textureInfos * texture, float x, float y, float angle) {
+
+    // Specifies the byte offset between consecutive generic vertex attributes.
+    // If stride is 0, the generic vertex attributes are understood to be tightly packed in the array
+    GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
+
+    glBindBuffer(GL_ARRAY_BUFFER, texture->vertexBuffer);
+
+    glEnableVertexAttribArray(gvPositionHandle);
+    glEnableVertexAttribArray(gvTexCoordHandle);
+
+    // Load the vertex position
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, 0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (const GLvoid *)3);
+
+    // Load the texture coordinate
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (const GLvoid *)6);
+
+    // Bind the texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture->texture);
+
+    // matrix transformations
+    mvp_matrix[12] = x;
+    mvp_matrix[13] = y;
+
+    rotate_matrix[0] = cos(angle);
+    rotate_matrix[1] = sin(angle);
+    rotate_matrix[4] = -rotate_matrix[1];
+    rotate_matrix[5] = rotate_matrix[0];
+
+    glUniformMatrix4fv(gvRotateHandle, 1, GL_FALSE, rotate_matrix);
+    glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, texture->indexBuffer);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     CHECK_GL();
 }
