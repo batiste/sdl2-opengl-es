@@ -41,9 +41,9 @@ int main(int argc, char** argv)
         x = 0;
         y = 0;
         int i;
-        float nb_texture = 50;
+        float nb_texture = 3;
         for(i=0; i<nb_texture; i++) {
-            drawTexture(&texture, -0.5 + i/nb_texture, y, frames / (float)(50 + i));
+            drawBufferTexture(&texture, -0.5 + i/nb_texture, y, frames / (float)(40 + i));
         }
 
         x = 2 * (mouse_x - (screen.w / 2.0)) / (float)screen.w;

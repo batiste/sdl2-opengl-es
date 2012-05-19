@@ -207,12 +207,11 @@ loadShader(GLenum type, const char * filename) {
     LOG("glCreateShader");
     shader = glCreateShader(type);
     if(shader == 0) {
-        LOG("Shader failed %d", type);
+        LOG("Shader creation failed %d", type);
         return 0;
     }
     // Load the shader source
     const GLchar* buffer = (const GLchar*) loadFile(filename);
-    LOG("glShaderSource Buffer \n%s", buffer);
     glShaderSource(shader, 1, &buffer, NULL);
 
     // Compile the shader
@@ -596,10 +595,10 @@ int drawBufferTexture(struct textureInfos * texture, float x, float y, float ang
 
     // Load the vertex position
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, 0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (const GLvoid *)3);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, 3 * sizeof(GLfloat));
 
     // Load the texture coordinate
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (const GLvoid *)6);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, 6 * sizeof(GLfloat));
 
     // Bind the texture
     glActiveTexture(GL_TEXTURE0);
