@@ -36,7 +36,10 @@
 SDL_Window * mainwindow;   // Our window handle
 SDL_GLContext maincontext; // Our opengl context handle
 Uint32 then, now, frames;  // Used for FPS
-float mouse_x, mouse_y;
+float mouse_x = 0.0;
+float mouse_y = 0.0;
+float mouse_x_prev = 0.0;
+float mouse_y_prev = 0.0;
 static Uint32 next_time;
 
 GLuint gvPositionHandle;   // shader handler
@@ -68,6 +71,7 @@ float ortho_matrix[] =
     0.0f, 0.0f, -2.0f, -1.0f,
     0.0f, 0.0f, 0.0f, 1.0f
 };
+
 
 Uint32 time_left(void)
 {
@@ -143,7 +147,7 @@ _checkGLError(char * file, int line)
 {
     GLuint err = glGetError();
     if (err > 0 )  {
-        LOG("SDL ERROR: file:%s line:%d error:%d", file, line, err);
+        LOG("GL ERROR: file:%s line:%d error:%d", file, line, err);
     }
     return err;
 }
@@ -231,31 +235,31 @@ loadShader(GLenum type, const char * filename) {
         {
             char* infoLog = malloc(sizeof(char) * infoLen);
             glGetShaderInfoLog(shader, infoLen, NULL, infoLog);
-            LOGE("Error compiling shader:\n %s", infoLog);
+            LOG("Error compiling shader:\n %s", infoLog);
             free(infoLog);
-            exit(1);
+            return cleanup(1);
         }
         glDeleteShader(shader);
         return 0;
     }
+    CHECK_GL();
     return shader;
 }
 
-GLuint initProgram() {
+GLuint initProgram(const char * vertexFile, const char * fragmentFile) {
     // create the shaders and the program
-    GLuint programObject;
     GLuint vertexShader;
     GLuint fragmentShader;
     GLint linked;
 
-    vertexShader = loadShader(GL_VERTEX_SHADER, "vertex-shader-1.vert");
+    vertexShader = loadShader(GL_VERTEX_SHADER, vertexFile);
     CHECK_GL();
-    fragmentShader = loadShader(GL_FRAGMENT_SHADER, "texture-shader-1.frag");
+    fragmentShader = loadShader(GL_FRAGMENT_SHADER, fragmentFile);
     CHECK_GL();
-    programObject = glCreateProgram();
+    GLuint programObject = glCreateProgram();
     if(programObject == 0) {
         LOGE("Unable to initialize the shader programm");
-        return cleanup(0);
+        return cleanup(1);
     }
 
     CHECK_GL();
@@ -277,12 +281,42 @@ GLuint initProgram() {
         {
             char* infoLog = malloc(sizeof(char) * infoLen);
             glGetProgramInfoLog(programObject, infoLen, NULL, infoLog);
-            LOGE("Error linking program:\n%s\n", infoLog);
+            LOG("Error linking program:\n%s\n", infoLog);
             free(infoLog);
+            return cleanup(1);
         }
         glDeleteProgram(programObject);
         return 0;
     }
+
+    CHECK_GL();
+    // You need to 'use' the program before you can get it's uniforms.
+    /*glUseProgram(programObject);
+    CHECK_GL();
+
+    gvPositionHandle = glGetAttribLocation(programObject, "a_position");
+    // gvNormalHandle=glGetAttribLocation(gProgram,"a_normal");
+    gvTexCoordHandle = glGetAttribLocation(programObject, "a_texCoord");
+    gvSamplerHandle = glGetUniformLocation(programObject, "s_texture");
+
+    gvMatrixHandle = glGetUniformLocation(programObject, "mvp_matrix");
+    gvRotateHandle = glGetUniformLocation(programObject, "rotate_matrix");
+
+    glEnableVertexAttribArray(gvPositionHandle);
+    //glEnableVertexAttribArray(gvNormalHandle);
+    glEnableVertexAttribArray(gvTexCoordHandle);
+    // Set the sampler texture unit to 0
+    // glUniform1i(gvSamplerHandle, 0);*/
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+    CHECK_GL();
+
+    LOG("Shader completed")
+    return programObject;
+}
+
+int useProgram(GLuint programObject) {
 
     CHECK_GL();
     // You need to 'use' the program before you can get it's uniforms.
@@ -300,13 +334,10 @@ GLuint initProgram() {
     glEnableVertexAttribArray(gvPositionHandle);
     //glEnableVertexAttribArray(gvNormalHandle);
     glEnableVertexAttribArray(gvTexCoordHandle);
+    CHECK_GL();
     // Set the sampler texture unit to 0
     // glUniform1i(gvSamplerHandle, 0);
 
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    return programObject;
 }
 
 struct waveInfos {
@@ -319,8 +350,8 @@ struct waveInfos {
 loadSound(char * filename, struct waveInfos * sound) {
     // Load the WAV
     char filename_final[256] = "";
-    strcpy( filename_final, ASSETS_DIR );
-    strcat( filename_final, filename );
+    strcpy(filename_final, ASSETS_DIR);
+    strcat(filename_final, filename);
     LOG("loadSound %s", filename_final);
 
     if ( SDL_LoadWAV(filename_final, &sound->spec, &sound->sound,
@@ -579,7 +610,7 @@ int drawTexture(struct textureInfos * texture, float x, float y, float angle) {
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, texture->indices);
 
-    CHECK_GL();
+    //CHECK_GL();
 }
 
 int drawBufferTexture(struct textureInfos * texture, float x, float y, float angle) {
@@ -590,8 +621,8 @@ int drawBufferTexture(struct textureInfos * texture, float x, float y, float ang
 
     glBindBuffer(GL_ARRAY_BUFFER, texture->vertexBuffer);
 
-    glEnableVertexAttribArray(gvPositionHandle);
-    glEnableVertexAttribArray(gvTexCoordHandle);
+    //glEnableVertexAttribArray(gvPositionHandle);
+    //glEnableVertexAttribArray(gvTexCoordHandle);
 
     // Load the vertex position
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, 0);
@@ -623,9 +654,49 @@ int drawBufferTexture(struct textureInfos * texture, float x, float y, float ang
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    CHECK_GL();
+    //CHECK_GL();
 }
 
+
+int drawLine(GLfloat * vertices, int nbPoints) {
+
+    CHECK_GL();
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    CHECK_GL();
+    glEnable(GL_BLEND);
+    CHECK_GL();
+    //glEnable(GL_LINE_SMOOTH);
+    glLineWidth(5.0f);
+    CHECK_GL();
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    CHECK_GL();
+
+    // Load the vertex position
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0,
+        vertices);
+    CHECK_GL();
+
+    // matrix transformations
+    mvp_matrix[12] = 0;
+    mvp_matrix[13] = 0;
+
+    rotate_matrix[0] = cos(0);
+    rotate_matrix[1] = sin(0);
+    rotate_matrix[4] = -rotate_matrix[1];
+    rotate_matrix[5] = rotate_matrix[0];
+
+    glUniformMatrix4fv(gvRotateHandle, 1, GL_FALSE, rotate_matrix);
+    glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
+
+    glEnableVertexAttribArray(0);
+
+    glDrawArrays(GL_LINE_STRIP, 0, nbPoints);
+
+    CHECK_GL();
+}
 
 struct {
     int w;
@@ -788,6 +859,9 @@ void Java_org_libsdl_app_SDLActivity_onNativeTouch(
                                      jint action, jfloat x, jfloat y, jfloat p)
  {
     LOG("onNativeTouch (%f, %f)", x, y);
+
+    //float hypo = sqrt((mouse_x-mouse_x_prev)*(mouse_x-mouse_x_prev) + (mouse_y-mouse_y_prev)*(mouse_y-mouse_y_prev));
+
     mouse_x = x;
     mouse_y = y;
  }
