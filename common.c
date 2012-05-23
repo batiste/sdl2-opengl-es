@@ -36,10 +36,8 @@
 SDL_Window * mainwindow;   // Our window handle
 SDL_GLContext maincontext; // Our opengl context handle
 Uint32 then, now, frames;  // Used for FPS
-float mouse_x = 0.0;
-float mouse_y = 0.0;
-float mouse_x_prev = 0.0;
-float mouse_y_prev = 0.0;
+float _mouse_x = 0.0;
+float _mouse_y = 0.0;
 static Uint32 next_time;
 
 GLuint gvPositionHandle;   // shader handler
@@ -363,7 +361,7 @@ loadSound(char * filename, struct waveInfos * sound) {
 }
 
 
-struct textureInfos {
+struct TextureInfos {
    char* filename;
    GLuint texture;
    int width;
@@ -402,7 +400,7 @@ void convertBGRtoRGB(char * bgr, int num)
 }
 
 int
-loadTexture(struct textureInfos * infos) {
+loadTexture(struct TextureInfos * infos) {
 
     // This surface will tell us the details of the image
     SDL_Surface * surface;
@@ -573,7 +571,7 @@ loadTexture(struct textureInfos * infos) {
 }
 
 
-int drawTexture(struct textureInfos * texture, float x, float y, float angle) {
+int drawTexture(struct TextureInfos * texture, float x, float y, float angle) {
 
     // Specifies the byte offset between consecutive generic vertex attributes.
     // If stride is 0, the generic vertex attributes are understood to be tightly packed in the array
@@ -613,7 +611,7 @@ int drawTexture(struct textureInfos * texture, float x, float y, float angle) {
     //CHECK_GL();
 }
 
-int drawBufferTexture(struct textureInfos * texture, float x, float y, float angle) {
+int drawBufferTexture(struct TextureInfos * texture, float x, float y, float angle) {
 
     // Specifies the byte offset between consecutive generic vertex attributes.
     // If stride is 0, the generic vertex attributes are understood to be tightly packed in the array
@@ -658,7 +656,7 @@ int drawBufferTexture(struct textureInfos * texture, float x, float y, float ang
 }
 
 
-int drawLine(GLfloat * vertices, int nbPoints) {
+int drawLines(GLfloat * vertices, int nbPoints) {
 
     CHECK_GL();
 
@@ -667,7 +665,7 @@ int drawLine(GLfloat * vertices, int nbPoints) {
     glEnable(GL_BLEND);
     CHECK_GL();
     //glEnable(GL_LINE_SMOOTH);
-    glLineWidth(5.0f);
+    glLineWidth(10.0f);
     CHECK_GL();
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -694,6 +692,42 @@ int drawLine(GLfloat * vertices, int nbPoints) {
     glEnableVertexAttribArray(0);
 
     glDrawArrays(GL_LINE_STRIP, 0, nbPoints);
+
+    CHECK_GL();
+}
+
+int drawPoints(GLfloat * vertices, int nbPoints) {
+
+    CHECK_GL();
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    CHECK_GL();
+    glEnable(GL_BLEND);
+    CHECK_GL();
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    CHECK_GL();
+
+    // Load the vertex position
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0,
+        vertices);
+    CHECK_GL();
+
+    // matrix transformations
+    mvp_matrix[12] = 0;
+    mvp_matrix[13] = 0;
+
+    rotate_matrix[0] = cos(0);
+    rotate_matrix[1] = sin(0);
+    rotate_matrix[4] = -rotate_matrix[1];
+    rotate_matrix[5] = rotate_matrix[0];
+
+    glUniformMatrix4fv(gvRotateHandle, 1, GL_FALSE, rotate_matrix);
+    glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
+
+    glEnableVertexAttribArray(0);
+    glDrawArrays(GL_POINTS, 0, nbPoints);
 
     CHECK_GL();
 }
@@ -804,6 +838,17 @@ void playSound() {
         SDL_Delay(1000);*/
 }
 
+
+int getMouse(int* x, int* y) {
+    #ifdef ANDROID
+    *(x) = (int)_mouse_x;
+    *(y) = (int)_mouse_y;
+    #else
+    SDL_GetMouseState(x, y);
+    #endif
+}
+
+
 #ifdef ANDROID
 
 // Called before SDL_main() to initialize JNI bindings in SDL library
@@ -846,7 +891,7 @@ void Java_org_libsdl_app_SDLActivity_nativeQuit(JNIEnv* env, jclass cls, jobject
     //exit(0);
 }
 
-// End the SDL app
+// // End the SDL app
 void Java_org_libsdl_app_SDLActivity_onNativeKeyDown(JNIEnv* env, jclass cls, jobject obj)
 {
     LOG("Java_org_libsdl_app_SDLActivity_onNativeKeyDown");
@@ -862,8 +907,8 @@ void Java_org_libsdl_app_SDLActivity_onNativeTouch(
 
     //float hypo = sqrt((mouse_x-mouse_x_prev)*(mouse_x-mouse_x_prev) + (mouse_y-mouse_y_prev)*(mouse_y-mouse_y_prev));
 
-    mouse_x = x;
-    mouse_y = y;
+    _mouse_x = x;
+    _mouse_y = y;
  }
 
 
