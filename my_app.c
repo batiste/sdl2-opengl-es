@@ -113,8 +113,6 @@ int main(int argc, char** argv)
             drawLines(points, nbPoints);
         }
 
-
-
         SDL_GL_SwapWindow(mainwindow);
 
         SDL_Delay(time_left());
