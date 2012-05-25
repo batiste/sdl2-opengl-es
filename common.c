@@ -362,14 +362,15 @@ loadSound(char * filename, struct waveInfos * sound) {
 
 
 struct TextureInfos {
-   char* filename;
-   GLuint texture;
-   int width;
-   int height;
-   GLfloat vertices[20];
-   GLuint vertexBuffer;
-   GLuint indexBuffer;
-   GLushort indices[6];
+    char* filename;
+    GLuint texture;
+    int width;
+    int height;
+    GLfloat * vertices;
+    int verticesSize;
+    GLuint vertexBuffer;
+    GLuint indexBuffer;
+    GLushort * indices;
 };
 
 
@@ -512,6 +513,9 @@ loadTexture(struct TextureInfos * infos) {
 
     CHECK_GL();
 
+    infos->verticesSize = 4;
+    infos->vertices = malloc(20 * sizeof(GLfloat));
+
     // Position 0
     infos->vertices[0] = -surface->w;
     infos->vertices[1] = surface->h;
@@ -554,6 +558,7 @@ loadTexture(struct TextureInfos * infos) {
     glBufferData(GL_ARRAY_BUFFER, 20 * sizeof(GLfloat), infos->vertices, GL_STATIC_DRAW);
 
 
+    infos->indices = malloc(6 * sizeof(GLshort));
     infos->indices[0] = 0;
     infos->indices[1] = 1;
     infos->indices[2] = 2;
@@ -606,9 +611,10 @@ int drawTexture(struct TextureInfos * texture, float x, float y, float angle) {
     glUniformMatrix4fv(gvRotateHandle, 1, GL_FALSE, rotate_matrix);
     glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
 
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, texture->indices);
+    glDrawElements(GL_TRIANGLES, ((texture->verticesSize - 2) * 3), GL_UNSIGNED_SHORT, texture->indices);
 
-    //CHECK_GL();
+    LOG("ELEMENTS %d", ((texture->verticesSize - 2) * 3))
+    CHECK_GL();
 }
 
 int drawBufferTexture(struct TextureInfos * texture, float x, float y, float angle) {
@@ -665,7 +671,7 @@ int drawLines(GLfloat * vertices, int nbPoints) {
     glEnable(GL_BLEND);
     CHECK_GL();
     //glEnable(GL_LINE_SMOOTH);
-    glLineWidth(10.0f);
+    glLineWidth(5.0f);
     CHECK_GL();
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -674,6 +680,50 @@ int drawLines(GLfloat * vertices, int nbPoints) {
 
     // Load the vertex position
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0,
+        vertices);
+    CHECK_GL();
+
+    // matrix transformations
+    mvp_matrix[12] = 0;
+    mvp_matrix[13] = 0;
+
+    rotate_matrix[0] = cos(0);
+    rotate_matrix[1] = sin(0);
+    rotate_matrix[4] = -rotate_matrix[1];
+    rotate_matrix[5] = rotate_matrix[0];
+
+    glUniformMatrix4fv(gvRotateHandle, 1, GL_FALSE, rotate_matrix);
+    glUniformMatrix4fv(gvMatrixHandle, 1, GL_FALSE, mvp_matrix);
+
+    glEnableVertexAttribArray(0);
+
+    glDrawArrays(GL_LINE_STRIP, 0, nbPoints);
+
+    CHECK_GL();
+}
+
+
+int drawLinesFromVertices(GLfloat * vertices, int nbPoints) {
+
+    CHECK_GL();
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    CHECK_GL();
+    glEnable(GL_BLEND);
+    CHECK_GL();
+    //glEnable(GL_LINE_SMOOTH);
+    glLineWidth(10.0f);
+    CHECK_GL();
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    CHECK_GL();
+
+    GLsizei stride = 5 * sizeof(GLfloat); // 3 for position, 2 for texture
+    // Load the vertex position
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride,
+        vertices);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride,
         vertices);
     CHECK_GL();
 

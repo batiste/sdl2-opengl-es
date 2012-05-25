@@ -1,4 +1,6 @@
-#version 100
+#ifdef GL_ES
+precision mediump float;
+#endif
 // white fragment shader
 precision mediump float;
 void main()

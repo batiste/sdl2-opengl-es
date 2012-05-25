@@ -108,8 +108,25 @@ int main(int argc, char** argv)
         GLfloat points[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         useProgram(pointProgram);
 
+        struct TextureInfos texture1;
+
         int nbPoints = 0;
         if(nbPoints = find_intersect_points(&texture, &line, points)) {
+            useProgram(pointProgram);
+            drawLines(points, nbPoints);
+            LOG("%d", nbPoints);
+            if(nbPoints > 1) {
+
+                split_vertex(&texture, &line, &texture1);
+
+                useProgram(textureProgram);
+                drawTexture(&texture1, 0, 0, 0.0);
+
+                useProgram(lineProgram);
+                drawLinesFromVertices(texture1.vertices, texture1.verticesSize);
+
+            }
+            useProgram(pointProgram);
             drawLines(points, nbPoints);
         }
 

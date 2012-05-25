@@ -1,4 +1,6 @@
-#version 100
+#ifdef GL_ES
+precision mediump float;
+#endif
 // fragment shader
 precision mediump float;
 varying vec2 v_texCoord;
