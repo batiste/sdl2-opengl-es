@@ -109,6 +109,7 @@ int main(int argc, char** argv)
         useProgram(pointProgram);
 
         struct TextureInfos texture1;
+        struct TextureInfos texture2;
 
         int nbPoints = 0;
         if(nbPoints = find_intersect_points(&texture, &line, points)) {
@@ -117,13 +118,16 @@ int main(int argc, char** argv)
             LOG("%d", nbPoints);
             if(nbPoints > 1) {
 
-                split_vertex(&texture, &line, &texture1);
+                split_vertex(&texture, &line, &texture1, &texture2);
 
                 useProgram(textureProgram);
-                drawTexture(&texture1, 0, 0, 0.0);
+                drawTexture(&texture1, 0.0, 0.6, 0.0);
+                drawTexture(&texture2, 0.0, -0.6, 0.0);
 
                 useProgram(lineProgram);
                 drawLinesFromVertices(texture1.vertices, texture1.verticesSize);
+                drawLinesFromVertices(texture2.vertices, texture2.verticesSize);
+
 
             }
             useProgram(pointProgram);

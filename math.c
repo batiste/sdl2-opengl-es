@@ -1,9 +1,9 @@
 
 double distance2points(float x1, float y1, float x2, float y2) {
     float distance;
-    float distance_x = x1-x2;
-    float distance_y = y1- y2;
-    distance = sqrt( (distance_x * distance_x) + (distance_y * distance_y));
+    float distance_x = x1 - x2;
+    float distance_y = y1 - y2;
+    distance = sqrt((distance_x * distance_x) + (distance_y * distance_y));
     return distance;
 }
 
@@ -82,7 +82,8 @@ struct Intersection {
 };
 
 
-int split_vertex(struct TextureInfos * texture, struct Line * line, struct TextureInfos * texture1) {
+int split_vertex(struct TextureInfos * texture, struct Line * line,
+                 struct TextureInfos * texture1, struct TextureInfos * texture2) {
 
     int i;
     float intersect_x;
@@ -121,13 +122,11 @@ int split_vertex(struct TextureInfos * texture, struct Line * line, struct Textu
 
 
     createNewVertexFromIntersection(&intersections, texture, texture1);
-    //struct Intersection inverted_intersections[2];
-    //inverted_intersections[0] = intersections[1];
-    //inverted_intersections[1] = intersections[0];
+    struct Intersection inverted_intersections[2];
+    inverted_intersections[0] = intersections[1];
+    inverted_intersections[1] = intersections[0];
 
-    //struct TextureInfos texture2;
-
-    //createNewVertexFromIntersection(&inverted_intersections, texture, &texture2);
+    createNewVertexFromIntersection(&inverted_intersections, texture, texture2);
 
     return nbIntersections;
 }
@@ -164,13 +163,17 @@ int createNewVertexFromIntersection(
     GLfloat * new_vertices = malloc((5 * (newTexture->verticesSize)) * sizeof(GLfloat));
 
     // allocate memory for the texture indices
-    newTexture->indices = malloc(6 * sizeof(GLshort));
+    newTexture->indices = malloc(9 * sizeof(GLshort));
     newTexture->indices[0] = 0;
     newTexture->indices[1] = 1;
     newTexture->indices[2] = 2;
     newTexture->indices[3] = 0;
     newTexture->indices[4] = 2;
     newTexture->indices[5] = 3;
+    // TODO: Find the proper indices
+    newTexture->indices[6] = 0;
+    newTexture->indices[7] = 3;
+    newTexture->indices[8] = 4;
 
 
     float segment_length = distance2points(
@@ -182,8 +185,8 @@ int createNewVertexFromIntersection(
     float distance_intersection = distance2points(
             texture->vertices[intersections[0].index_p2+0],
             texture->vertices[intersections[0].index_p2+1],
-            intersections[1].x,
-            intersections[1].y);
+            intersections[0].x,
+            intersections[0].y);
     float ratio_1 = distance_intersection / segment_length;
 
     segment_length = distance2points(
@@ -198,8 +201,13 @@ int createNewVertexFromIntersection(
             intersections[1].x,
             intersections[1].y);
 
-
     float ratio_2 = distance_intersection / segment_length;
+
+    if(ratio_1 > 1.0 || ratio_2 > 1.0) {
+        LOG("ERROR RATIO %f, %f", ratio_1, ratio_2);
+        exit(1);
+    }
+
 
     LOG("RATIO %f, %f", ratio_1, ratio_2)
 
@@ -278,7 +286,7 @@ int createNewVertexFromIntersection(
 
         old_index = (old_index+5) % size;
         nbVertices = nbVertices-1;
-        new_index = (new_index+5) % size;
+        new_index = (new_index+5) % (newTexture->verticesSize * 5);
     }
 
     // copy vertices
