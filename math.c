@@ -138,6 +138,7 @@ int createNewVertexFromIntersection(
     struct TextureInfos * texture,
     struct TextureInfos * newTexture) {
 
+    int j = 0, i = 0;
     int size = texture->verticesSize * 5;
 
     // start point to built the new vertex
@@ -162,18 +163,18 @@ int createNewVertexFromIntersection(
     // allocate memory for the new vertices
     GLfloat * new_vertices = malloc((5 * (newTexture->verticesSize)) * sizeof(GLfloat));
 
+
+    int indicesSize = ((newTexture->verticesSize - 2) * 3);
     // allocate memory for the texture indices
-    newTexture->indices = malloc(9 * sizeof(GLshort));
-    newTexture->indices[0] = 0;
-    newTexture->indices[1] = 1;
-    newTexture->indices[2] = 2;
-    newTexture->indices[3] = 0;
-    newTexture->indices[4] = 2;
-    newTexture->indices[5] = 3;
-    // TODO: Find the proper indices
-    newTexture->indices[6] = 0;
-    newTexture->indices[7] = 3;
-    newTexture->indices[8] = 4;
+    newTexture->indices = malloc(indicesSize * sizeof(GLshort));
+
+    j = 0;
+    for(i=0; i<indicesSize; i=i+3) {
+        newTexture->indices[i] = 0; // always 0
+        newTexture->indices[i+1] = 1 + j;
+        newTexture->indices[i+2] = 2 + j;
+        j = j + 1;
+    }
 
 
     float segment_length = distance2points(
@@ -207,9 +208,6 @@ int createNewVertexFromIntersection(
         LOG("ERROR RATIO %f, %f", ratio_1, ratio_2);
         exit(1);
     }
-
-
-    LOG("RATIO %f, %f", ratio_1, ratio_2)
 
     // start the new vertices with the 2 collision points
     new_vertices[0] = intersections[1].x;
@@ -264,13 +262,11 @@ int createNewVertexFromIntersection(
     } else {
         y_texture = a - c;
     }
-
     new_vertices[8] = x_texture ; // x
     new_vertices[9] = y_texture ; // y
 
     LOG("TEXTURE COORD %f %f", new_vertices[3], new_vertices[4])
     LOG("TEXTURE COORD %f %f", new_vertices[8], new_vertices[9])
-
 
     int old_index = intersections[0].index_p2;
 
@@ -280,7 +276,7 @@ int createNewVertexFromIntersection(
         new_vertices[new_index] = texture->vertices[old_index];
         new_vertices[new_index+1] = texture->vertices[old_index+1];
         new_vertices[new_index+2] = texture->vertices[old_index+2];
-        // same texture coordinates as before
+        // copy the same texture coordinates as before
         new_vertices[new_index+3] = texture->vertices[old_index+3];
         new_vertices[new_index+4] = texture->vertices[old_index+4];
 
@@ -289,13 +285,12 @@ int createNewVertexFromIntersection(
         new_index = (new_index+5) % (newTexture->verticesSize * 5);
     }
 
-    // copy vertices
+    // copy the new vertices
     newTexture->vertices = new_vertices;
-    // texture object
+    // copy the texture object
     newTexture->texture = texture->texture;
 
     LOG("nb vertices %d", newTexture->verticesSize)
-    int i;
     for(i=0; i<(newTexture->verticesSize * 5); i=i+5) {
         LOG("x: %f y: %f", newTexture->vertices[i], newTexture->vertices[i+1]);
     }
