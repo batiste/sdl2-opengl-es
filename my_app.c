@@ -10,8 +10,6 @@ int main(int argc, char** argv)
     lineProgram = initProgram("vertex-shader-1.vert", "line-shader-1.frag");
     CHECK_GL();
 
-
-
     GLuint pointProgram;
     pointProgram = initProgram("vertex-shader-1.vert", "point-shader-1.frag");
     CHECK_GL();
@@ -42,10 +40,15 @@ int main(int argc, char** argv)
 
     float vx = 0;
     float vy = 0;
+    int i = 0;
     int mouse_x = 0;
     int mouse_y = 0;
     int mouse_x_prev = 0;
     int mouse_y_prev = 0;
+    int lastCut = 0;
+
+    struct TextureInfos *pieces[100];
+    int nbPieces = 0;
 
 
     // Main loop
@@ -64,17 +67,6 @@ int main(int argc, char** argv)
         useProgram(textureProgram);
         CHECK_GL();
 
-        /*x = 0;
-        y = 0;
-        int i;
-        float nb_texture = 3;
-        for(i=0; i<nb_texture; i++) {
-            drawBufferTexture(&texture, -0.5 + i/nb_texture, y, frames / (float)(40 + i));
-        }*/
-
-        /*x = 2 * (mouse_x - (screen.w / 2.0)) / (float)screen.w;
-        y = -2 * (mouse_y - (screen.h / 2.0)) / (float)screen.h;
-        drawTexture(&texture, x, y, frames / 50.0);*/
 
         drawBufferTexture(&texture, 0, 0, 0);
 
@@ -88,16 +80,15 @@ int main(int argc, char** argv)
 
         getMouse(&mouse_x, &mouse_y);
 
-        vx = (vx / 1.8) + ((mouse_x - mouse_x_prev) / 300.0);
-        vy = (vy / 1.8) + ((mouse_y - mouse_y_prev) / 300.0);
+        vx = (vx / 1.5) + ((mouse_x - mouse_x_prev) / 30.0);
+        vy = (vy / 1.5) + ((mouse_y - mouse_y_prev) / 30.0);
+        mouse_y_prev = mouse_y_prev + vy;
+        mouse_x_prev = mouse_x_prev + vx;
 
-        mouse_x_prev = 0;
-        mouse_y_prev = 0;
-
-        vertices[0] = 2 * (mouse_x_prev - (screen.w / 2.0));
-        vertices[1] = -2 * (mouse_y_prev - (screen.h / 2.0));
-        vertices[2] = 2 * (mouse_x - (screen.w / 2.0));
-        vertices[3] = -2 * (mouse_y - (screen.h / 2.0));
+        vertices[0] = mouse_x_prev;
+        vertices[1] = mouse_y_prev;
+        vertices[2] = mouse_x;
+        vertices[3] = mouse_y;
         drawLines(vertices, 2);
 
         struct Line line;
@@ -108,31 +99,67 @@ int main(int argc, char** argv)
         GLfloat points[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
         useProgram(pointProgram);
 
-        struct TextureInfos texture1;
-        struct TextureInfos texture2;
-
         int nbPoints = 0;
         if(nbPoints = find_intersect_points(&texture, &line, points)) {
             useProgram(pointProgram);
             drawLines(points, nbPoints);
-            LOG("%d", nbPoints);
-            if(nbPoints > 1) {
 
-                split_vertex(&texture, &line, &texture1, &texture2);
+            if(nbPoints > 1 && nbPieces < 95 && lastCut < frames) {
 
-                useProgram(textureProgram);
-                drawTexture(&texture1, 0.0, 0.6, 0.0);
-                drawTexture(&texture2, 0.0, -0.6, 0.0);
+                lastCut = frames + 10;
 
-                useProgram(lineProgram);
-                drawLinesFromVertices(texture1.vertices, texture1.verticesSize);
-                drawLinesFromVertices(texture2.vertices, texture2.verticesSize);
+                struct TextureInfos * texture1 = malloc(sizeof(struct TextureInfos));
+                struct TextureInfos * texture2 = malloc(sizeof(struct TextureInfos));
 
+                split_vertex(&texture, &line, texture1, texture2);
 
+                pieces[nbPieces] = texture1;
+                nbPieces = nbPieces + 1;
+                pieces[nbPieces] = texture2;
+                nbPieces = nbPieces + 1;
+
+                texture1->vx = 2.0;
+                texture2->vx = -2.0;
+
+                texture1->vy = -2.0;
+                texture2->vy = -2.0;
+
+                texture1->vr = 0.01;
+                texture2->vr = -0.01;
+
+                /*useProgram(lineProgram);
+                drawLinesFromVertices(texture1->vertices, texture1->verticesSize);
+                drawLinesFromVertices(texture2->vertices, texture2->verticesSize);*/
             }
+
+
             useProgram(pointProgram);
             drawLines(points, nbPoints);
         }
+
+        struct TextureInfos * myTexture;
+        for(i=0; i<nbPieces; i++) {
+
+            myTexture = pieces[i];
+            if(myTexture == NULL)
+                continue;
+
+            // TODO: freee and cleanup
+            if(myTexture->y < -screen.h) {
+                pieces[i] = NULL;
+            }
+
+            // gravity
+            myTexture->vy = myTexture->vy - 0.25;
+
+            myTexture->x = myTexture->x + myTexture->vx;
+            myTexture->y = myTexture->y + myTexture->vy;
+            myTexture->angle = myTexture->angle + myTexture->vr;
+            useProgram(textureProgram);
+            drawTexture(myTexture, myTexture->x, myTexture->y, myTexture->angle);
+
+        }
+
 
         SDL_GL_SwapWindow(mainwindow);
 

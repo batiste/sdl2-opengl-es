@@ -1,5 +1,6 @@
 
-double distance2points(float x1, float y1, float x2, float y2) {
+
+double distance_2_points(float x1, float y1, float x2, float y2) {
     float distance;
     float distance_x = x1 - x2;
     float distance_y = y1 - y2;
@@ -117,10 +118,6 @@ int split_vertex(struct TextureInfos * texture, struct Line * line,
     if(nbIntersections != 2)
         return 0;
 
-    LOG("INTERSECTIONS %f %f",intersections[1].x, intersections[1].y)
-
-
-
     createNewVertexFromIntersection(&intersections, texture, texture1);
     struct Intersection inverted_intersections[2];
     inverted_intersections[0] = intersections[1];
@@ -144,16 +141,17 @@ int createNewVertexFromIntersection(
     // start point to built the new vertex
     int current_index = intersections[0].index_p2;
 
+    // crash after 12 vertices
+    int safeGuard = 5 * 12;
     // there has to be at least 1 vertices to take from the old
     int nbVertices = 0;
     // count the new vertices to take from the old vertices
-    int safeGuard = 5 * 12;
     while(current_index != intersections[1].index_p2) {
         nbVertices = nbVertices + 1;
         current_index = (current_index+5) % size;
         safeGuard = safeGuard - 1;
         if(safeGuard < 0) {
-            LOG("Unexpected inifinte loop, current index %d, %d", current_index, intersections[1].index_p2)
+            LOG("Unexpected big vertex, current index %d, %d", current_index, intersections[1].index_p2)
             exit(1);
         }
     }
@@ -177,26 +175,26 @@ int createNewVertexFromIntersection(
     }
 
 
-    float segment_length = distance2points(
+    float segment_length = distance_2_points(
             texture->vertices[intersections[0].index_p1+0],
             texture->vertices[intersections[0].index_p1+1],
             texture->vertices[intersections[0].index_p2+0],
             texture->vertices[intersections[0].index_p2+1]
     );
-    float distance_intersection = distance2points(
+    float distance_intersection = distance_2_points(
             texture->vertices[intersections[0].index_p2+0],
             texture->vertices[intersections[0].index_p2+1],
             intersections[0].x,
             intersections[0].y);
     float ratio_1 = distance_intersection / segment_length;
 
-    segment_length = distance2points(
+    segment_length = distance_2_points(
             texture->vertices[intersections[1].index_p1+0],
             texture->vertices[intersections[1].index_p1+1],
             texture->vertices[intersections[1].index_p2+0],
             texture->vertices[intersections[1].index_p2+1]
     );
-    distance_intersection = distance2points(
+    distance_intersection = distance_2_points(
             texture->vertices[intersections[1].index_p1+0],
             texture->vertices[intersections[1].index_p1+1],
             intersections[1].x,
@@ -242,9 +240,8 @@ int createNewVertexFromIntersection(
     new_vertices[5] = intersections[0].x;
     new_vertices[6] = intersections[0].y;
     new_vertices[7] = 0.0f;
+
     // texture coordinates
-
-
     a = texture->vertices[intersections[0].index_p2+3];
     b = texture->vertices[intersections[0].index_p1+3];
     c = abs(a - b) * ratio_1;
@@ -290,10 +287,10 @@ int createNewVertexFromIntersection(
     // copy the texture object
     newTexture->texture = texture->texture;
 
-    LOG("nb vertices %d", newTexture->verticesSize)
+    /*LOG("nb vertices %d", newTexture->verticesSize)
     for(i=0; i<(newTexture->verticesSize * 5); i=i+5) {
         LOG("x: %f y: %f", newTexture->vertices[i], newTexture->vertices[i+1]);
-    }
+    }*/
 
     return 0;
 }

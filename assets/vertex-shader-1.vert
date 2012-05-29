@@ -13,7 +13,7 @@ varying mat4 rotate_matrix_2;
 
 void main()
 {
-    gl_PointSize = 10.0;
+    gl_PointSize = 5.0;
     gl_Position = mvp_matrix * rotate_matrix * a_position;
     v_texCoord = a_texCoord;
     rotate_matrix_2 = rotate_matrix;

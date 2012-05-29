@@ -46,6 +46,11 @@ GLuint gvSamplerHandle;
 GLuint gvMatrixHandle;
 GLuint gvRotateHandle;
 
+struct { // screen size structure
+    int w;
+    int h;
+} screen;
+
 float mvp_matrix[] =
 {
     1.0f, 0.0f, 0.0f, 0.0f,
@@ -66,7 +71,7 @@ float ortho_matrix[] =
 {
     1.0f, 0.0f, 0.0f, -1.0f,
     0.0f, 1.0, 0.0f, 1.0f,
-    0.0f, 0.0f, -2.0f, -1.0f,
+    0.0f, 0.0f, -1.0f, -1.0f,
     0.0f, 0.0f, 0.0f, 1.0f
 };
 
@@ -288,23 +293,6 @@ GLuint initProgram(const char * vertexFile, const char * fragmentFile) {
     }
 
     CHECK_GL();
-    // You need to 'use' the program before you can get it's uniforms.
-    /*glUseProgram(programObject);
-    CHECK_GL();
-
-    gvPositionHandle = glGetAttribLocation(programObject, "a_position");
-    // gvNormalHandle=glGetAttribLocation(gProgram,"a_normal");
-    gvTexCoordHandle = glGetAttribLocation(programObject, "a_texCoord");
-    gvSamplerHandle = glGetUniformLocation(programObject, "s_texture");
-
-    gvMatrixHandle = glGetUniformLocation(programObject, "mvp_matrix");
-    gvRotateHandle = glGetUniformLocation(programObject, "rotate_matrix");
-
-    glEnableVertexAttribArray(gvPositionHandle);
-    //glEnableVertexAttribArray(gvNormalHandle);
-    glEnableVertexAttribArray(gvTexCoordHandle);
-    // Set the sampler texture unit to 0
-    // glUniform1i(gvSamplerHandle, 0);*/
 
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
@@ -362,6 +350,12 @@ loadSound(char * filename, struct waveInfos * sound) {
 
 
 struct TextureInfos {
+    float x;
+    float y;
+    float vx;
+    float vy;
+    float angle;
+    float vr;
     char* filename;
     GLuint texture;
     int width;
@@ -511,14 +505,17 @@ loadTexture(struct TextureInfos * infos) {
     infos->width = surface->w;
     infos->height = surface->h;
 
+    float hw = surface->w / 2.0;
+    float hh = surface->h / 2.0;
+
     CHECK_GL();
 
     infos->verticesSize = 4;
     infos->vertices = malloc(20 * sizeof(GLfloat));
 
     // Position 0
-    infos->vertices[0] = -surface->w;
-    infos->vertices[1] = surface->h;
+    infos->vertices[0] = -hw;
+    infos->vertices[1] = hh;
     infos->vertices[2] = 0.0f;
 
     // TexCoord 0
@@ -526,8 +523,8 @@ loadTexture(struct TextureInfos * infos) {
     infos->vertices[4] = 0.0f;
 
     // Position 1
-    infos->vertices[5] = -surface->w;
-    infos->vertices[6] = -surface->h;
+    infos->vertices[5] = -hw;
+    infos->vertices[6] = -hh;
     infos->vertices[7] = 0.0f;
 
     // TexCoord 1
@@ -535,8 +532,8 @@ loadTexture(struct TextureInfos * infos) {
     infos->vertices[9] = 1.0f;
 
     // Position 2
-    infos->vertices[10] = surface->w;
-    infos->vertices[11] = -surface->h;
+    infos->vertices[10] = hw;
+    infos->vertices[11] = -hh;
     infos->vertices[12] = 0.0f;
 
     // TexCoord 2
@@ -544,8 +541,8 @@ loadTexture(struct TextureInfos * infos) {
     infos->vertices[14] = 1.0f;
 
     // Position 4
-    infos->vertices[15] = surface->w;
-    infos->vertices[16] = surface->h;
+    infos->vertices[15] = hw;
+    infos->vertices[16] = hh;
     infos->vertices[17] = 0.0f;
 
     // TexCoord 3
@@ -600,8 +597,8 @@ int drawTexture(struct TextureInfos * texture, float x, float y, float angle) {
     glBindTexture(GL_TEXTURE_2D, texture->texture);
 
     // matrix transformations
-    mvp_matrix[12] = x;
-    mvp_matrix[13] = y;
+    mvp_matrix[12] = 2.0 * x / (float)screen.w;
+    mvp_matrix[13] = 2.0 * y / (float)screen.h;
 
     rotate_matrix[0] = cos(angle);
     rotate_matrix[1] = sin(angle);
@@ -613,7 +610,6 @@ int drawTexture(struct TextureInfos * texture, float x, float y, float angle) {
 
     glDrawElements(GL_TRIANGLES, ((texture->verticesSize - 2) * 3), GL_UNSIGNED_SHORT, texture->indices);
 
-    LOG("ELEMENTS %d", ((texture->verticesSize - 2) * 3))
     CHECK_GL();
 }
 
@@ -640,8 +636,8 @@ int drawBufferTexture(struct TextureInfos * texture, float x, float y, float ang
     glBindTexture(GL_TEXTURE_2D, texture->texture);
 
     // matrix transformations
-    mvp_matrix[12] = x;
-    mvp_matrix[13] = y;
+    mvp_matrix[12] = 2.0 * x / (float)screen.w;
+    mvp_matrix[13] = 2.0 * y / (float)screen.h;
 
     rotate_matrix[0] = cos(angle);
     rotate_matrix[1] = sin(angle);
@@ -782,10 +778,6 @@ int drawPoints(GLfloat * vertices, int nbPoints) {
     CHECK_GL();
 }
 
-struct {
-    int w;
-    int h;
-} screen;
 
 int init() {
     // Init the window, the GL context
@@ -806,8 +798,9 @@ int init() {
     #endif
 
     float zoom = 1.0f;
-    mvp_matrix[0] = zoom / (float)screen.w;
-    mvp_matrix[5] = zoom / (float)screen.h;
+    // we want the top left corner to be the reference
+    mvp_matrix[0] = (zoom * 2.0) / (float)screen.w;
+    mvp_matrix[5] = (zoom * 2.0) / (float)screen.h;
 
     // Create our window centered
     mainwindow = SDL_CreateWindow("Simple texture moving", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -890,11 +883,18 @@ void playSound() {
 
 
 int getMouse(int* x, int* y) {
+    // instead of top left reference we use the center of
+    // the screen
+    int hw = screen.w / 2.0;
+    int hh = screen.h / 2.0;
     #ifdef ANDROID
-    *(x) = (int)_mouse_x;
-    *(y) = (int)_mouse_y;
+    *(x) = (int)_mouse_x - hw;
+    *(y) = -((int)_mouse_y - hh);
     #else
-    SDL_GetMouseState(x, y);
+    int _x, _y;
+    SDL_GetMouseState(&_x, &_y);
+    *(x) =  _x - hw;
+    *(y) = -(_y - hh);
     #endif
 }
 
@@ -956,7 +956,6 @@ void Java_org_libsdl_app_SDLActivity_onNativeTouch(
     LOG("onNativeTouch (%f, %f)", x, y);
 
     //float hypo = sqrt((mouse_x-mouse_x_prev)*(mouse_x-mouse_x_prev) + (mouse_y-mouse_y_prev)*(mouse_y-mouse_y_prev));
-
     _mouse_x = x;
     _mouse_y = y;
  }
