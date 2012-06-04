@@ -352,9 +352,13 @@ loadSound(char * filename, struct waveInfos * sound) {
 struct TextureInfos {
     float x;
     float y;
+    float angle;
+    // pivot point
+    float px;
+    float py;
+    // velocity
     float vx;
     float vy;
-    float angle;
     float vr;
     char* filename;
     GLuint texture;
@@ -504,6 +508,11 @@ loadTexture(struct TextureInfos * infos) {
 
     infos->width = surface->w;
     infos->height = surface->h;
+
+    infos->px = 0;
+    infos->py = 0;
+    infos->vx = 0;
+    infos->vy = 0;
 
     float hw = surface->w / 2.0;
     float hh = surface->h / 2.0;
@@ -655,6 +664,34 @@ int drawBufferTexture(struct TextureInfos * texture, float x, float y, float ang
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     //CHECK_GL();
+}
+
+GLfloat * transformTexture(struct TextureInfos * texture, float tx, float ty, float angle) {
+
+    int i, j;
+    float x, y, new_x, new_y;
+    int size = texture->verticesSize * 5;
+
+    float cos_a = cos(angle);
+    float sin_a = sin(angle);
+
+    // rotate and translate the vertices
+    for(i=0; i<size; i=i+5) {
+        // back to the origin
+        x = texture->vertices[i+0] - texture->px;
+        y = texture->vertices[i+1] - texture->py;
+
+        // rotate point
+        float new_x = x * cos_a - y * sin_a;
+        float new_y = x * sin_a + y * cos_a;
+
+        // translate back from pivot and add translation
+        new_x = new_x + texture->px + tx;
+        new_y = new_y + texture->py + ty;
+
+        texture->vertices[i+0] = new_x;
+        texture->vertices[i+1] = new_y;
+    }
 }
 
 

@@ -21,8 +21,9 @@ int main(int argc, char** argv)
 
     // load texture
     struct TextureInfos texture;
-    texture.filename = "SDL_logo.bmp";
+    texture.filename = "bamboo.bmp";
     loadTexture(&texture);
+    transformTexture(&texture, 0.0, 100.0, 0.0);
 
     CHECK_GL();
     CHECK_SDL();
@@ -68,7 +69,8 @@ int main(int argc, char** argv)
         CHECK_GL();
 
 
-        drawBufferTexture(&texture, 0, 0, 0);
+        transformTexture(&texture, 0, 0, 0.01);
+        drawTexture(&texture, 0, 0, 0);
 
 
         CHECK_GL();
@@ -97,13 +99,12 @@ int main(int argc, char** argv)
         line.bx = vertices[2];
         line.by = vertices[3];
         GLfloat points[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-        useProgram(pointProgram);
+
 
         int nbPoints = 0;
         if(nbPoints = find_intersect_points(&texture, &line, points)) {
             useProgram(pointProgram);
             drawLines(points, nbPoints);
-
             if(nbPoints > 1 && nbPieces < 95 && lastCut < frames) {
 
                 lastCut = frames + 10;
@@ -152,11 +153,10 @@ int main(int argc, char** argv)
             // gravity
             myTexture->vy = myTexture->vy - 0.25;
 
-            myTexture->x = myTexture->x + myTexture->vx;
-            myTexture->y = myTexture->y + myTexture->vy;
-            myTexture->angle = myTexture->angle + myTexture->vr;
+            transformTexture(myTexture, myTexture->vx, myTexture->vy, myTexture->vr);
+
             useProgram(textureProgram);
-            drawTexture(myTexture, myTexture->x, myTexture->y, myTexture->angle);
+            drawTexture(myTexture, 0, 0, 0);
 
         }
 
