@@ -20,9 +20,12 @@ int main(int argc, char** argv)
     CHECK_GL();
 
     // load texture
+    struct ImageData png;
+    png.filename = "bamboo.png";
+    loadPNG(&png);
+
     struct TextureInfos texture;
-    texture.filename = "bamboo.bmp";
-    loadTexture(&texture);
+    loadTexture(&texture, &png);
     transformTexture(&texture, 0.0, 100.0, 0.0);
 
     CHECK_GL();

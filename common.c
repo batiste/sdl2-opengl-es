@@ -1,6 +1,8 @@
 // Common functions
 
 #include "SDL.h"
+#include "lodepng.h"
+#include "lodepng.c"
 
 #define  LOG_TAG    "SDL"
 
@@ -349,6 +351,16 @@ loadSound(char * filename, struct waveInfos * sound) {
 }
 
 
+
+struct ImageData {
+    unsigned char * pixels;
+    int width;
+    int height;
+    int nbColors;
+    char * filename;
+    GLuint type;
+};
+
 struct TextureInfos {
     float x;
     float y;
@@ -360,7 +372,7 @@ struct TextureInfos {
     float vx;
     float vy;
     float vr;
-    char* filename;
+    //char* filename;
     GLuint texture;
     int width;
     int height;
@@ -398,23 +410,48 @@ void convertBGRtoRGB(char * bgr, int num)
     }
 }
 
-int
-loadTexture(struct TextureInfos * infos) {
+void loadPNG(struct ImageData * data)
+{
+    unsigned error;
+    unsigned char* image;
+    unsigned width, height;
 
+    char filename_final[256] = "";
+    strcpy(filename_final, ASSETS_DIR);
+    strcat(filename_final, data->filename);
+    LOG("loadPNG %s", filename_final)
+
+    error = lodepng_decode32_file(&data->pixels, &data->width, &data->height, filename_final);
+    if(error) {
+        LOG("error %u: %s\n", error, lodepng_error_text(error));
+        exit(1);
+    }
+    checkImageDimension(data);
+
+    data->nbColors = 4;
+    data->type = GL_RGBA;
+}
+
+void loadBMP(struct ImageData * data)
+{
     // This surface will tell us the details of the image
     SDL_Surface * surface;
     GLenum texture_format;
     GLint  nOfColors;
 
     char filename_final[256] = "";
-    strcpy( filename_final, ASSETS_DIR );
-    strcat( filename_final, infos->filename );
-    LOG("loadTexture %s", filename_final)
+    strcpy(filename_final, ASSETS_DIR);
+    strcat(filename_final, data->filename);
+    LOG("loadBMP %s", filename_final)
 
     if ( !(surface = SDL_LoadBMP(filename_final)) ) {
         LOG("SDL could not load %s: %s", filename_final, SDL_GetError());
         exit(0);
     }
+
+    data->width = surface->w;
+    data->height = surface->h;
+    checkImageDimension(data);
 
     Uint32 rmask, gmask, bmask, amask;
     #if SDL_BYTEORDER == SDL_BIG_ENDIAN
@@ -429,55 +466,69 @@ loadTexture(struct TextureInfos * infos) {
         amask = 0xff000000;
     #endif
 
+
+    // get the number of channels in the SDL surface
+    // Openg ES only support GL_RGB and GL_RGBA
+    data->nbColors =  surface->format->BytesPerPixel;
+    int nbPixels = (data->width * data->height);
+    LOG("surface->format->BytesPerPixel %d", data->nbColors);
+    LOG("surface->format->Rmask %d", surface->format->Rmask);
+
+    if (data->nbColors == 4) // contains an alpha channel
+    {
+        LOG("Image %s has an alpha channel", data->filename);
+        if (surface->format->Rmask == rmask) {
+            LOG("Image format: GL_RGBA");
+            data->type = GL_RGBA;
+        } else {
+            convertBGRAtoRGBA(surface->pixels, nbPixels);
+            data->type = GL_RGBA;
+        }
+    } else if (data->nbColors == 3) // no alpha channel
+    {
+        LOGE("Image %s does not have an alpha channel", data->filename);
+        if (surface->format->Rmask == rmask) {
+            LOG("Image format: GL_RGB");
+            data->type = GL_RGB;
+        } else {
+            convertBGRtoRGB(surface->pixels, nbPixels);
+            data->type = GL_RGB;
+        }
+    } else {
+        LOG("The image is not truecolor.");
+        exit(1);
+    }
+
+    int buffer_size = sizeof(unsigned char) * nbPixels * data->nbColors;
+    data->pixels = malloc(buffer_size);
+    data->pixels = memcpy(data->pixels, surface->pixels, buffer_size);
+
+    SDL_FreeSurface(surface);
+}
+
+
+int checkImageDimension(struct ImageData * data) {
     int max_size;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_size);
     LOG("Max image size %d", max_size);
-    if(surface->w > max_size || surface->h > max_size) {
-        LOG("Image is too big, max size is %d", max_size);
+    if(data->width > max_size || data->height > max_size) {
+        LOG("Image is too big (%d, %d)", data->width, data->height);
         exit(0);
     }
 
     // Check that the image's width is a power of 2
-    if ( (surface->w & (surface->w - 1)) != 0 ) {
-        LOG("warning: %s width is not a power of 2", infos->filename);
+    if ( (data->width & (data->width - 1)) != 0 ) {
+        LOG("warning: %s width is not a power of 2", data->filename);
     }
 
     // Also check if the height is a power of 2
-    if ( (surface->h & (surface->h - 1)) != 0 ) {
-        LOG("warning: %s height is not a power of 2", infos->filename);
+    if ( (data->height & (data->height - 1)) != 0 ) {
+        LOG("warning: %s height is not a power of 2", data->filename);
     }
+}
 
-    // get the number of channels in the SDL surface
-    // Openg ES only support GL_RGB and GL_RGBA
-    nOfColors = surface->format->BytesPerPixel;
-    int nbPixels = (surface->w * surface->h);
-    LOG("surface->format->BytesPerPixel %d", nOfColors);
-    LOG("surface->format->Rmask %d", surface->format->Rmask);
-
-    if (nOfColors == 4) // contains an alpha channel
-    {
-        LOG("Image %s has an alpha channel", infos->filename);
-        if (surface->format->Rmask == rmask) {
-            LOG("Image format: GL_RGBA");
-            texture_format = GL_RGBA;
-        } else {
-            convertBGRAtoRGBA(surface->pixels, nbPixels);
-            texture_format = GL_RGBA;
-        }
-    } else if (nOfColors == 3) // no alpha channel
-    {
-        LOGE("Image %s does not have an alpha channel", infos->filename);
-        if (surface->format->Rmask == rmask) {
-            LOG("Image format: GL_RGB");
-            texture_format = GL_RGB;
-        } else {
-            convertBGRtoRGB(surface->pixels, nbPixels);
-            texture_format = GL_RGB;
-        }
-    } else {
-        LOG("The image is not truecolor.");
-        exit(0);
-    }
+int
+loadTexture(struct TextureInfos * infos, struct ImageData * data) {
 
     CHECK_GL();
     // glPixelStorei(GL_PACK_ALIGNMENT, 4);
@@ -501,21 +552,20 @@ loadTexture(struct TextureInfos * infos) {
 
     // internalformat specifies the color components in the texture. Must be same as format.
     // Edit the texture object's image data using the information SDL_Surface gives us
-    glTexImage2D(GL_TEXTURE_2D, 0, texture_format, surface->w, surface->h, 0,
-                    texture_format, GL_UNSIGNED_BYTE, surface->pixels );
+    glTexImage2D(GL_TEXTURE_2D, 0, data->type, data->width, data->height, 0,
+                    data->type, GL_UNSIGNED_BYTE, data->pixels );
     CHECK_GL();
-    //glGenerateMipmap(infos->texture);
 
-    infos->width = surface->w;
-    infos->height = surface->h;
+    infos->width = data->width;
+    infos->height = data->height;
 
     infos->px = 0;
     infos->py = 0;
     infos->vx = 0;
     infos->vy = 0;
 
-    float hw = surface->w / 2.0;
-    float hh = surface->h / 2.0;
+    float hw = data->width / 2.0;
+    float hh = data->height / 2.0;
 
     CHECK_GL();
 
@@ -577,7 +627,6 @@ loadTexture(struct TextureInfos * infos) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLushort), infos->indices, GL_STATIC_DRAW);
     CHECK_GL();
 
-    SDL_FreeSurface(surface);
     return 0;
 }
 
@@ -635,10 +684,10 @@ int drawBufferTexture(struct TextureInfos * texture, float x, float y, float ang
 
     // Load the vertex position
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, 0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, 3 * sizeof(GLfloat));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (const GLvoid *)(3 * sizeof(GLfloat)));
 
     // Load the texture coordinate
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, 6 * sizeof(GLfloat));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (const GLvoid *)(6 * sizeof(GLfloat)));
 
     // Bind the texture
     glActiveTexture(GL_TEXTURE0);
@@ -667,6 +716,7 @@ int drawBufferTexture(struct TextureInfos * texture, float x, float y, float ang
 }
 
 GLfloat * transformTexture(struct TextureInfos * texture, float tx, float ty, float angle) {
+    // transform all the vertices of the current textureInfos object
 
     int i, j;
     float x, y, new_x, new_y;

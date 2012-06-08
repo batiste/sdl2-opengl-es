@@ -262,8 +262,8 @@ int createNewVertexFromIntersection(
     new_vertices[8] = x_texture ; // x
     new_vertices[9] = y_texture ; // y
 
-    LOG("TEXTURE COORD %f %f", new_vertices[3], new_vertices[4])
-    LOG("TEXTURE COORD %f %f", new_vertices[8], new_vertices[9])
+    //LOG("TEXTURE COORD %f %f", new_vertices[3], new_vertices[4])
+    //LOG("TEXTURE COORD %f %f", new_vertices[8], new_vertices[9])
 
     int old_index = intersections[0].index_p2;
 
