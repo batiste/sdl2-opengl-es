@@ -158,7 +158,7 @@ _checkGLError(char * file, int line)
 }
 
 
-char * loadFile(const char * filename) {
+char * loadFile(const char * filename, int * size) {
 
     SDL_RWops * file;
     char * buffer;
@@ -198,6 +198,7 @@ char * loadFile(const char * filename) {
     }
 
     LOG("Block read %d", n_blocks);
+    *size = finalPos;
 
     SDL_RWclose(file);
     LOG("Quit loadFile");
@@ -220,7 +221,8 @@ loadShader(GLenum type, const char * filename) {
         return 0;
     }
     // Load the shader source
-    const GLchar* buffer = (const GLchar*) loadFile(filename);
+    int size;
+    const GLchar* buffer = (const GLchar*) loadFile(filename, &size);
     glShaderSource(shader, 1, &buffer, NULL);
 
     // Compile the shader
@@ -413,15 +415,11 @@ void convertBGRtoRGB(char * bgr, int num)
 void loadPNG(struct ImageData * data)
 {
     unsigned error;
-    unsigned char* image;
-    unsigned width, height;
+    int size;
+    char * buffer;
+    buffer = loadFile(data->filename, &size);
 
-    char filename_final[256] = "";
-    strcpy(filename_final, ASSETS_DIR);
-    strcat(filename_final, data->filename);
-    LOG("loadPNG %s", filename_final)
-
-    error = lodepng_decode32_file(&data->pixels, &data->width, &data->height, filename_final);
+    error = lodepng_decode32(&data->pixels, &data->width, &data->height, buffer, size);
     if(error) {
         LOG("error %u: %s\n", error, lodepng_error_text(error));
         exit(1);
@@ -528,7 +526,7 @@ int checkImageDimension(struct ImageData * data) {
 }
 
 int
-loadTexture(struct TextureInfos * infos, struct ImageData * data) {
+loadTexture(struct TextureInfos * infos, struct ImageData * data, float xscale, float yscale) {
 
     CHECK_GL();
     // glPixelStorei(GL_PACK_ALIGNMENT, 4);
@@ -556,16 +554,19 @@ loadTexture(struct TextureInfos * infos, struct ImageData * data) {
                     data->type, GL_UNSIGNED_BYTE, data->pixels );
     CHECK_GL();
 
-    infos->width = data->width;
-    infos->height = data->height;
+    infos->width = xscale * data->width;
+    infos->height = yscale * data->height;
 
+    // init values
+    infos->x = 0;
+    infos->y = 0;
     infos->px = 0;
     infos->py = 0;
     infos->vx = 0;
     infos->vy = 0;
 
-    float hw = data->width / 2.0;
-    float hh = data->height / 2.0;
+    float hw = infos->width / 2.0;
+    float hh = infos->height / 2.0;
 
     CHECK_GL();
 
@@ -721,6 +722,10 @@ GLfloat * transformTexture(struct TextureInfos * texture, float tx, float ty, fl
     int i, j;
     float x, y, new_x, new_y;
     int size = texture->verticesSize * 5;
+
+    // useful for basic caculation
+    texture->x += tx;
+    texture->y += ty;
 
     float cos_a = cos(angle);
     float sin_a = sin(angle);
@@ -880,8 +885,8 @@ int init() {
     screen.w = mode.w;
     screen.h = mode.h;
     #else
-    screen.w = mode.w -100;
-    screen.h = mode.h -100;
+    screen.w = (int)(mode.h - 200) / 1.5;
+    screen.h = mode.h - 200;
     #endif
 
     float zoom = 1.0f;
@@ -1012,7 +1017,8 @@ void Java_org_libsdl_app_SDLActivity_nativeInit(JNIEnv* env, jclass cls, jobject
     argv[1] = NULL;
 
     char * buffer;
-    buffer = loadFile("vertex-shader-1.vert");
+    int size;
+    buffer = loadFile("vertex-shader-1.vert", &size);
     free(buffer);
 
     status = SDL_main(1, argv);

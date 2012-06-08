@@ -25,8 +25,22 @@ int main(int argc, char** argv)
     loadPNG(&png);
 
     struct TextureInfos texture;
-    loadTexture(&texture, &png);
-    transformTexture(&texture, 0.0, 100.0, 0.0);
+    loadTexture(&texture, &png, 1.0, 1.0);
+    transformTexture(&texture, 0.0, 0.0, 0.0);
+
+
+    // load texture
+    struct ImageData background;
+    background.filename = "background.png";
+    loadPNG(&background);
+
+    struct TextureInfos back1;
+    float scalex = screen.w / (float)background.width;
+    float scaley = screen.h / (float)background.height + .01;
+
+    loadTexture(&back1, &background, scalex, scaley);
+    struct TextureInfos back2;
+    loadTexture(&back2, &background, scalex, scaley);
 
     CHECK_GL();
     CHECK_SDL();
@@ -54,6 +68,7 @@ int main(int argc, char** argv)
     struct TextureInfos *pieces[100];
     int nbPieces = 0;
 
+    transformTexture(&back2, 0, -back2.height, 0);
 
     // Main loop
     while (!done) {
@@ -71,10 +86,19 @@ int main(int argc, char** argv)
         useProgram(textureProgram);
         CHECK_GL();
 
+        if(back2.y > (back2.height / 2.0 + screen.h / 2.0))
+            transformTexture(&back2, 0, -2 * back2.height, 0);
+        transformTexture(&back2, 0, 5, 0);
+        drawTexture(&back2, 0, 0, 0);
+
+        if(back1.y > (back2.height / 2.0 + screen.h / 2.0))
+            transformTexture(&back1, 0, -2 * back2.height, 0);
+        transformTexture(&back1, 0, 5, 0);
+        drawTexture(&back1, 0, 0, 0);
+
 
         transformTexture(&texture, 0, 0, 0.01);
         drawTexture(&texture, 0, 0, 0);
-
 
         CHECK_GL();
         useProgram(lineProgram);
