@@ -65,8 +65,7 @@ int main(int argc, char** argv)
     int mouse_y_prev = 0;
     int lastCut = 0;
 
-    struct TextureInfos *pieces[100];
-    int nbPieces = 0;
+    GenericList pieces = { 0, NULL, NULL };
 
     transformTexture(&back2, 0, -back2.height, 0);
 
@@ -79,6 +78,7 @@ int main(int argc, char** argv)
                 done = 1;
             }
         }
+
 
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
@@ -109,6 +109,23 @@ int main(int argc, char** argv)
 
         getMouse(&mouse_x, &mouse_y);
 
+        ListElement *el;
+
+        MousePosition *pos1 = 0;
+        MousePosition *pos2 = 0;
+        for(el = mouse_buffer.first; el != NULL; el=el->next) {
+            pos2 = pos1;
+            pos1 = (MousePosition *) el->data;
+            if(pos1 &&  pos2) {
+                vertices[0] = pos1->x;
+                vertices[1] = pos1->y;
+                vertices[2] = pos2->x;
+                vertices[3] = pos2->y;
+                drawLines(vertices, 2);
+            }
+        }
+
+
         vx = (vx / 1.5) + ((mouse_x - mouse_x_prev) / 30.0);
         vy = (vy / 1.5) + ((mouse_y - mouse_y_prev) / 30.0);
         mouse_y_prev = mouse_y_prev + vy;
@@ -118,21 +135,28 @@ int main(int argc, char** argv)
         vertices[1] = mouse_y_prev;
         vertices[2] = mouse_x;
         vertices[3] = mouse_y;
-        drawLines(vertices, 2);
+        //drawLines(vertices, 2);
+
+        MousePosition *first = 0;
+        MousePosition *last = 0;
+        first = (MousePosition *)mouse_buffer.first->data;
+        last = (MousePosition *)mouse_buffer.last->data;
 
         struct Line line;
-        line.ax = vertices[0];
-        line.ay = vertices[1];
-        line.bx = vertices[2];
-        line.by = vertices[3];
         GLfloat points[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        if(first != last) {
+            line.ax = first->x;
+            line.ay = first->y;
+            line.bx = last->x;
+            line.by = last->y;
+        }
 
 
         int nbPoints = 0;
         if(nbPoints = find_intersect_points(&texture, &line, points)) {
             useProgram(pointProgram);
             drawLines(points, nbPoints);
-            if(nbPoints > 1 && nbPieces < 95 && lastCut < frames) {
+            if(nbPoints > 1 && lastCut < frames) {
 
                 lastCut = frames + 10;
 
@@ -141,10 +165,8 @@ int main(int argc, char** argv)
 
                 split_vertex(&texture, &line, texture1, texture2);
 
-                pieces[nbPieces] = texture1;
-                nbPieces = nbPieces + 1;
-                pieces[nbPieces] = texture2;
-                nbPieces = nbPieces + 1;
+                addToList(&pieces, texture1);
+                addToList(&pieces, texture2);
 
                 texture1->vx = 2.0;
                 texture2->vx = -2.0;
@@ -154,10 +176,6 @@ int main(int argc, char** argv)
 
                 texture1->vr = 0.01;
                 texture2->vr = -0.01;
-
-                /*useProgram(lineProgram);
-                drawLinesFromVertices(texture1->vertices, texture1->verticesSize);
-                drawLinesFromVertices(texture2->vertices, texture2->verticesSize);*/
             }
 
 
@@ -166,15 +184,13 @@ int main(int argc, char** argv)
         }
 
         struct TextureInfos * myTexture;
-        for(i=0; i<nbPieces; i++) {
-
-            myTexture = pieces[i];
-            if(myTexture == NULL)
-                continue;
-
-            // TODO: freee and cleanup
+        for(el = pieces.first; el != NULL; el=el->next) {
+            myTexture = (struct TextureInfos *) el->data;
+            // TODO: free and cleanup
             if(myTexture->y < -screen.h) {
-                pieces[i] = NULL;
+                removeFromList(&pieces, el);
+                free(myTexture);
+                continue;
             }
 
             // gravity
@@ -184,7 +200,6 @@ int main(int argc, char** argv)
 
             useProgram(textureProgram);
             drawTexture(myTexture, 0, 0, 0);
-
         }
 
 

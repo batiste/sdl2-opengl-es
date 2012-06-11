@@ -3,6 +3,7 @@
 #include "SDL.h"
 #include "lodepng.h"
 #include "lodepng.c"
+#include "list.c"
 
 #define  LOG_TAG    "SDL"
 
@@ -41,6 +42,7 @@ Uint32 then, now, frames;  // Used for FPS
 float _mouse_x = 0.0;
 float _mouse_y = 0.0;
 static Uint32 next_time;
+
 
 GLuint gvPositionHandle;   // shader handler
 GLuint gvTexCoordHandle;
@@ -974,6 +976,13 @@ void playSound() {
 }
 
 
+GenericList mouse_buffer = { 0, NULL, NULL };
+struct MousePosition {
+    int x;
+    int y;
+};
+typedef struct MousePosition MousePosition;
+
 int getMouse(int* x, int* y) {
     // instead of top left reference we use the center of
     // the screen
@@ -988,6 +997,17 @@ int getMouse(int* x, int* y) {
     *(x) =  _x - hw;
     *(y) = -(_y - hh);
     #endif
+
+    MousePosition *pos = malloc(sizeof(MousePosition));
+    pos->x = *(x);
+    pos->y = *(y);
+
+    addToList(&mouse_buffer, pos);
+    while(mouse_buffer.length > 10) {
+        free(mouse_buffer.last->data);
+        removeFromList(&mouse_buffer, mouse_buffer.last);
+    }
+    //displayList(&mouse_buffer);
 }
 
 
