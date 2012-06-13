@@ -4,6 +4,7 @@
 #include "lodepng.h"
 #include "lodepng.c"
 #include "list.c"
+#include "math.c"
 
 #define  LOG_TAG    "SDL"
 
@@ -735,16 +736,16 @@ GLfloat * transformTexture(struct TextureInfos * texture, float tx, float ty, fl
     // rotate and translate the vertices
     for(i=0; i<size; i=i+5) {
         // back to the origin
-        x = texture->vertices[i+0] - texture->px;
-        y = texture->vertices[i+1] - texture->py;
+        x = texture->vertices[i+0] - texture->x;
+        y = texture->vertices[i+1] - texture->y;
 
         // rotate point
         float new_x = x * cos_a - y * sin_a;
         float new_y = x * sin_a + y * cos_a;
 
         // translate back from pivot and add translation
-        new_x = new_x + texture->px + tx;
-        new_y = new_y + texture->py + ty;
+        new_x = new_x + texture->x + tx;
+        new_y = new_y + texture->y + ty;
 
         texture->vertices[i+0] = new_x;
         texture->vertices[i+1] = new_y;
@@ -988,6 +989,7 @@ int getMouse(int* x, int* y) {
     // the screen
     int hw = screen.w / 2.0;
     int hh = screen.h / 2.0;
+    ListElement *el;
     #ifdef ANDROID
     *(x) = (int)_mouse_x - hw;
     *(y) = -((int)_mouse_y - hh);
@@ -1002,12 +1004,22 @@ int getMouse(int* x, int* y) {
     pos->x = *(x);
     pos->y = *(y);
 
+    if(mouse_buffer.first) {
+        MousePosition *first = (MousePosition *)mouse_buffer.first->data;
+
+        // reset the mouse buffer in case of big jump
+        if(distance_2_points(pos->x, pos->y, first->x, first->y) > 200) {
+            for(el = mouse_buffer.first; el != NULL; el=el->next) {
+                removeFromList(&mouse_buffer, el);
+            }
+        }
+    }
+
     addToList(&mouse_buffer, pos);
-    while(mouse_buffer.length > 10) {
+    while(mouse_buffer.length > 6) {
         free(mouse_buffer.last->data);
         removeFromList(&mouse_buffer, mouse_buffer.last);
     }
-    //displayList(&mouse_buffer);
 }
 
 

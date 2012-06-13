@@ -1,5 +1,5 @@
 CFLAGS = -g -O2
-LDFLAGS_GL = -lGL
+LDFLAGS_GL = -lGL -lm
 LDFLAGS_MESA = -lMesaGL
 SDLFLAGS = $(shell sdl2-config --libs --cflags)
 CC=gcc

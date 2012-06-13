@@ -1,6 +1,6 @@
 
 #include "common.c"
-#include "math.c"
+#include "intersection.c"
 
 int main(int argc, char** argv)
 {
@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 
     // load texture
     struct ImageData png;
-    png.filename = "bamboo.png";
+    png.filename = "bamboo-2.png";
     loadPNG(&png);
 
     struct TextureInfos texture;
@@ -31,21 +31,19 @@ int main(int argc, char** argv)
 
     // load texture
     struct ImageData background;
-    background.filename = "background.png";
+    background.filename = "bamboo-b2.png";
     loadPNG(&background);
 
-    struct TextureInfos back1;
+    struct TextureInfos back;
     float scalex = screen.w / (float)background.width;
-    float scaley = screen.h / (float)background.height + .01;
+    loadTexture(&back, &background, scalex, scalex);
+    transformTexture(&back, 0, -back.height / 2.0 + screen.h / 2.0, 0);
 
-    loadTexture(&back1, &background, scalex, scaley);
-    struct TextureInfos back2;
-    loadTexture(&back2, &background, scalex, scaley);
 
     CHECK_GL();
     CHECK_SDL();
 
-    glClearColor(0.5f, 0.7f, 1.0f, 0.0f);
+    glClearColor(110. / 255., 127. / 255., 91. / 255., 0.0f);
 
     float x, y;
 
@@ -67,7 +65,7 @@ int main(int argc, char** argv)
 
     GenericList pieces = { 0, NULL, NULL };
 
-    transformTexture(&back2, 0, -back2.height, 0);
+    transformTexture(&texture, 0, 200.0, 0.00);
 
     // Main loop
     while (!done) {
@@ -79,25 +77,22 @@ int main(int argc, char** argv)
             }
         }
 
-
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
         CHECK_GL();
         useProgram(textureProgram);
         CHECK_GL();
 
-        if(back2.y > (back2.height / 2.0 + screen.h / 2.0))
-            transformTexture(&back2, 0, -2 * back2.height, 0);
-        transformTexture(&back2, 0, 5, 0);
-        drawTexture(&back2, 0, 0, 0);
+        if(back.y < (back.height - screen.h) / 2.0) {
+            transformTexture(&back, 0, 1, 0);
+            transformTexture(&texture, 0, 0, 0.01);
+        }
+        else if(texture.y > -((screen.h / 2.0) -30)) {
+            transformTexture(&texture, 0, -3, 0);
+            transformTexture(&texture, 0, 0, 0.01);
+        }
+        drawTexture(&back, 0, 0, 0);
 
-        if(back1.y > (back2.height / 2.0 + screen.h / 2.0))
-            transformTexture(&back1, 0, -2 * back2.height, 0);
-        transformTexture(&back1, 0, 5, 0);
-        drawTexture(&back1, 0, 0, 0);
-
-
-        transformTexture(&texture, 0, 0, 0.01);
         drawTexture(&texture, 0, 0, 0);
 
         CHECK_GL();
@@ -151,14 +146,13 @@ int main(int argc, char** argv)
             line.by = last->y;
         }
 
-
         int nbPoints = 0;
         if(nbPoints = find_intersect_points(&texture, &line, points)) {
             useProgram(pointProgram);
             drawLines(points, nbPoints);
             if(nbPoints > 1 && lastCut < frames) {
 
-                lastCut = frames + 10;
+                lastCut = frames + 5;
 
                 struct TextureInfos * texture1 = malloc(sizeof(struct TextureInfos));
                 struct TextureInfos * texture2 = malloc(sizeof(struct TextureInfos));
@@ -171,8 +165,8 @@ int main(int argc, char** argv)
                 texture1->vx = 2.0;
                 texture2->vx = -2.0;
 
-                texture1->vy = -2.0;
-                texture2->vy = -2.0;
+                texture1->vy = -1.0;
+                texture2->vy = -1.0;
 
                 texture1->vr = 0.01;
                 texture2->vr = -0.01;
@@ -193,8 +187,36 @@ int main(int argc, char** argv)
                 continue;
             }
 
+            if(nbPoints = find_intersect_points(myTexture, &line, points)) {
+                useProgram(pointProgram);
+                drawLines(points, nbPoints);
+                if(nbPoints > 1 && lastCut < frames) {
+
+                    lastCut = frames + 5;
+
+                    struct TextureInfos * texture1 = malloc(sizeof(struct TextureInfos));
+                    struct TextureInfos * texture2 = malloc(sizeof(struct TextureInfos));
+
+                    split_vertex(myTexture, &line, texture1, texture2);
+
+                    addToList(&pieces, texture1);
+                    addToList(&pieces, texture2);
+
+                    texture1->vx = 2.0;
+                    texture2->vx = -2.0;
+
+                    texture1->vy = -2.0;
+                    texture2->vy = -2.0;
+
+                    texture1->vr = 0.01;
+                    texture2->vr = -0.01;
+                    removeFromList(&pieces, el);
+
+                }
+            }
+
             // gravity
-            myTexture->vy = myTexture->vy - 0.25;
+            myTexture->vy = myTexture->vy - 0.15;
 
             transformTexture(myTexture, myTexture->vx, myTexture->vy, myTexture->vr);
 
@@ -202,6 +224,7 @@ int main(int argc, char** argv)
             drawTexture(myTexture, 0, 0, 0);
         }
 
+        //transformTexture(&texture, 0, -200.0, 0.00);
 
         SDL_GL_SwapWindow(mainwindow);
 
