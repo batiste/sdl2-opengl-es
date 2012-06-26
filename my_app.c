@@ -20,21 +20,21 @@ int main(int argc, char** argv)
     CHECK_GL();
 
     // load texture
-    struct ImageData png;
+    ImageData png;
     png.filename = "bamboo-2.png";
     loadPNG(&png);
 
-    struct TextureInfos texture;
+    TextureInfos texture;
     loadTexture(&texture, &png, 1.0, 1.0);
     transformTexture(&texture, 0.0, 0.0, 0.0);
 
 
     // load texture
-    struct ImageData background;
+    ImageData background;
     background.filename = "bamboo-b2.png";
     loadPNG(&background);
 
-    struct TextureInfos back;
+    TextureInfos back;
     float scalex = screen.w / (float)background.width;
     loadTexture(&back, &background, scalex, scalex);
     transformTexture(&back, 0, -back.height / 2.0 + screen.h / 2.0, 0);
@@ -65,7 +65,7 @@ int main(int argc, char** argv)
 
     GenericList pieces = { 0, NULL, NULL };
 
-    transformTexture(&texture, 0, 200.0, 0.00);
+    transformTexture(&texture, 0, screen.h / 3.0, 0.00);
 
     // Main loop
     while (!done) {
@@ -83,16 +83,20 @@ int main(int argc, char** argv)
         useProgram(textureProgram);
         CHECK_GL();
 
-        if(back.y < (back.height - screen.h) / 2.0) {
-            transformTexture(&back, 0, 1, 0);
-            transformTexture(&texture, 0, 0, 0.01);
-        }
-        else if(texture.y > -((screen.h / 2.0) -30)) {
-            transformTexture(&texture, 0, -3, 0);
-            transformTexture(&texture, 0, 0, 0.01);
-        }
-        drawTexture(&back, 0, 0, 0);
 
+        float background_bottom_position = (back.height - screen.h) / 2.0;
+        float floor_position = -((screen.h / 2.0) -30 + 2 * (background_bottom_position - back.y));
+
+        if(back.y < background_bottom_position) {
+            transformTexture(&back, 0, 4, 0);
+            transformTexture(&texture, 0, 0, 0.01);
+        }
+        else if(texture.y > floor_position) {
+            transformTexture(&texture, 0, -4, 0);
+            transformTexture(&texture, 0, 0, 0.01);
+        }
+
+        drawTexture(&back, 0, 0, 0);
         drawTexture(&texture, 0, 0, 0);
 
         CHECK_GL();
@@ -148,14 +152,14 @@ int main(int argc, char** argv)
 
         int nbPoints = 0;
         if(nbPoints = find_intersect_points(&texture, &line, points)) {
-            useProgram(pointProgram);
-            drawLines(points, nbPoints);
             if(nbPoints > 1 && lastCut < frames) {
 
+                useProgram(pointProgram);
+                drawLines(points, nbPoints);
                 lastCut = frames + 5;
 
-                struct TextureInfos * texture1 = malloc(sizeof(struct TextureInfos));
-                struct TextureInfos * texture2 = malloc(sizeof(struct TextureInfos));
+                TextureInfos * texture1 = malloc(sizeof(TextureInfos));
+                TextureInfos * texture2 = malloc(sizeof(TextureInfos));
 
                 split_vertex(&texture, &line, texture1, texture2);
 
@@ -177,9 +181,9 @@ int main(int argc, char** argv)
             drawLines(points, nbPoints);
         }
 
-        struct TextureInfos * myTexture;
+        TextureInfos * myTexture;
         for(el = pieces.first; el != NULL; el=el->next) {
-            myTexture = (struct TextureInfos *) el->data;
+            myTexture = (TextureInfos *) el->data;
             // TODO: free and cleanup
             if(myTexture->y < -screen.h) {
                 removeFromList(&pieces, el);
@@ -194,8 +198,8 @@ int main(int argc, char** argv)
 
                     lastCut = frames + 5;
 
-                    struct TextureInfos * texture1 = malloc(sizeof(struct TextureInfos));
-                    struct TextureInfos * texture2 = malloc(sizeof(struct TextureInfos));
+                    TextureInfos * texture1 = malloc(sizeof(TextureInfos));
+                    TextureInfos * texture2 = malloc(sizeof(TextureInfos));
 
                     split_vertex(myTexture, &line, texture1, texture2);
 
@@ -208,11 +212,17 @@ int main(int argc, char** argv)
                     texture1->vy = -2.0;
                     texture2->vy = -2.0;
 
-                    texture1->vr = 0.01;
-                    texture2->vr = -0.01;
+                    texture1->vr = 0.02;
+                    texture2->vr = -0.02;
                     removeFromList(&pieces, el);
 
                 }
+            }
+
+            if(myTexture->y < floor_position) {
+                myTexture->vy = -myTexture->vy / 2.0;
+                myTexture->vx = 5 * myTexture->vx;
+                myTexture->vr = 2 * myTexture->vr;
             }
 
             // gravity

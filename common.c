@@ -365,6 +365,7 @@ struct ImageData {
     char * filename;
     GLuint type;
 };
+typedef struct ImageData ImageData;
 
 struct TextureInfos {
     float x;
@@ -387,6 +388,7 @@ struct TextureInfos {
     GLuint indexBuffer;
     GLushort * indices;
 };
+typedef struct TextureInfos TextureInfos;
 
 
 void convertBGRAtoRGBA(char * bgra, int num)
@@ -415,7 +417,7 @@ void convertBGRtoRGB(char * bgr, int num)
     }
 }
 
-void loadPNG(struct ImageData * data)
+void loadPNG(ImageData * data)
 {
     unsigned error;
     int size;
@@ -433,7 +435,7 @@ void loadPNG(struct ImageData * data)
     data->type = GL_RGBA;
 }
 
-void loadBMP(struct ImageData * data)
+void loadBMP(ImageData * data)
 {
     // This surface will tell us the details of the image
     SDL_Surface * surface;
@@ -508,7 +510,7 @@ void loadBMP(struct ImageData * data)
 }
 
 
-int checkImageDimension(struct ImageData * data) {
+int checkImageDimension(ImageData * data) {
     int max_size;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_size);
     LOG("Max image size %d", max_size);
@@ -529,7 +531,7 @@ int checkImageDimension(struct ImageData * data) {
 }
 
 int
-loadTexture(struct TextureInfos * infos, struct ImageData * data, float xscale, float yscale) {
+loadTexture(TextureInfos * infos, ImageData * data, float xscale, float yscale) {
 
     CHECK_GL();
     // glPixelStorei(GL_PACK_ALIGNMENT, 4);
@@ -635,7 +637,7 @@ loadTexture(struct TextureInfos * infos, struct ImageData * data, float xscale, 
 }
 
 
-int drawTexture(struct TextureInfos * texture, float x, float y, float angle) {
+int drawTexture(TextureInfos * texture, float x, float y, float angle) {
 
     // Specifies the byte offset between consecutive generic vertex attributes.
     // If stride is 0, the generic vertex attributes are understood to be tightly packed in the array
@@ -675,7 +677,7 @@ int drawTexture(struct TextureInfos * texture, float x, float y, float angle) {
     CHECK_GL();
 }
 
-int drawBufferTexture(struct TextureInfos * texture, float x, float y, float angle) {
+int drawBufferTexture(TextureInfos * texture, float x, float y, float angle) {
 
     // Specifies the byte offset between consecutive generic vertex attributes.
     // If stride is 0, the generic vertex attributes are understood to be tightly packed in the array
@@ -719,7 +721,7 @@ int drawBufferTexture(struct TextureInfos * texture, float x, float y, float ang
     //CHECK_GL();
 }
 
-GLfloat * transformTexture(struct TextureInfos * texture, float tx, float ty, float angle) {
+GLfloat * transformTexture(TextureInfos * texture, float tx, float ty, float angle) {
     // transform all the vertices of the current textureInfos object
 
     int i, j;
