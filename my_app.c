@@ -65,7 +65,9 @@ int main(int argc, char** argv)
 
     GenericList pieces = { 0, NULL, NULL };
 
-    transformTexture(&texture, 0, screen.h / 3.0, 0.00);
+    transformTexture(&texture, 0, screen.h / 4.0, 0.00);
+    addToList(&pieces, &texture);
+
 
     // Main loop
     while (!done) {
@@ -91,13 +93,15 @@ int main(int argc, char** argv)
             transformTexture(&back, 0, 4, 0);
             transformTexture(&texture, 0, 0, 0.01);
         }
-        else if(texture.y > floor_position) {
+        /*else if(texture.y > floor_position) {
             transformTexture(&texture, 0, -4, 0);
             transformTexture(&texture, 0, 0, 0.01);
         }
 
+        
+        drawTexture(&texture, 0, 0, 0);*/
+
         drawTexture(&back, 0, 0, 0);
-        drawTexture(&texture, 0, 0, 0);
 
         CHECK_GL();
         useProgram(lineProgram);
@@ -151,35 +155,6 @@ int main(int argc, char** argv)
         }
 
         int nbPoints = 0;
-        if(nbPoints = find_intersect_points(&texture, &line, points)) {
-            if(nbPoints > 1 && lastCut < frames) {
-
-                useProgram(pointProgram);
-                drawLines(points, nbPoints);
-                lastCut = frames + 5;
-
-                TextureInfos * texture1 = malloc(sizeof(TextureInfos));
-                TextureInfos * texture2 = malloc(sizeof(TextureInfos));
-
-                split_vertex(&texture, &line, texture1, texture2);
-
-                addToList(&pieces, texture1);
-                addToList(&pieces, texture2);
-
-                texture1->vx = 2.0;
-                texture2->vx = -2.0;
-
-                texture1->vy = -1.0;
-                texture2->vy = -1.0;
-
-                texture1->vr = 0.01;
-                texture2->vr = -0.01;
-            }
-
-
-            useProgram(pointProgram);
-            drawLines(points, nbPoints);
-        }
 
         TextureInfos * myTexture;
         for(el = pieces.first; el != NULL; el=el->next) {
@@ -220,9 +195,9 @@ int main(int argc, char** argv)
             }
 
             if(myTexture->y < floor_position) {
-                myTexture->vy = -myTexture->vy / 2.0;
-                myTexture->vx = 5 * myTexture->vx;
-                myTexture->vr = 2 * myTexture->vr;
+                myTexture->vy = -myTexture->vy / 1.5;
+                myTexture->vx = myTexture->vx / 1.5;
+                myTexture->vr = myTexture->vr / 1.5;
             }
 
             // gravity

@@ -6,7 +6,7 @@ CC=gcc
 
 # -lXi -lXmu
 
-all:	eglbuild
+all:	eglbuild glbuild
 
 glbuild:
 	$(CC) $(CFLAGS) -o app_gl my_app.c $(LDFLAGS_GL) $(SDLFLAGS)

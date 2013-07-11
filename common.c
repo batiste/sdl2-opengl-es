@@ -226,6 +226,7 @@ loadShader(GLenum type, const char * filename) {
     // Load the shader source
     int size;
     const GLchar* buffer = (const GLchar*) loadFile(filename, &size);
+    LOG("Load shader");
     glShaderSource(shader, 1, &buffer, NULL);
 
     // Compile the shader
@@ -268,7 +269,7 @@ GLuint initProgram(const char * vertexFile, const char * fragmentFile) {
     CHECK_GL();
     GLuint programObject = glCreateProgram();
     if(programObject == 0) {
-        LOGE("Unable to initialize the shader programm");
+        LOGE("Unable to initialize the shader program");
         return cleanup(1);
     }
 
