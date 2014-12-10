@@ -14,5 +14,8 @@ glbuild:
 eglbuild:
 	$(CC) $(CFLAGS) -o app_egl my_app.c -lGLESv2 $(SDLFLAGS)
 
+macbuild:
+	$(CC) -framework OpenGL -o app_gl my_app.c $(SDLFLAGS)
+
 clean:
 	rm app_egl app_gl

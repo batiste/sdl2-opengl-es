@@ -29,8 +29,10 @@
 #define  CHECK_SDL(...)   _checkSDLError(__FILE__, __LINE__);
 #define  CHECK_GL(...)   _checkGLError(__FILE__, __LINE__);
 
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
+#include <OpenGL/gl.h>
+
+//#include <GLES2/gl2.h>
+//#include <GLES2/gl2ext.h>
 
 
 #include <stdio.h>
